@@ -1,26 +1,48 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
+const sequelize = require('../config/sequelize');
 const app = require('../app');
 const Template = require('../models/templateModel');
 const Page = require('../models/pageModel');
 const Action = require('../models/actionModel');
+const User = require('../models/userModel'); // Sequelize model
+const { generateToken } = require('../utils/jwt');
 
 beforeAll(async () => {
   await mongoose.connect(process.env.MONGO_URI);
+  await sequelize.authenticate();   
+  await sequelize.sync({ force: true });
 });
 
 afterAll(async () => {
   await mongoose.connection.close();
+  await sequelize.close();
 });
 
 describe('Page API', () => {
   let templateId;
+  let user;
+  let userId;
+  let token;
 
   beforeEach(async () => {
+    user = await User.create({
+      first_name: 'Test',
+      last_name: 'User',
+      email: 'test@example.com',
+      profile_type: 'Registered',
+      password_hash: 'password123',
+      password_salt: 'salt'
+    });
+
+    userId = user.id;
+    token = generateToken(user);
+
     const template = await Template.create({
       template_name: 'Base Template',
       version: 1,
-      publish_status: 'Draft'
+      publish_status: 'Draft',
+      userId: user.id
     });
     templateId = template._id;
   });
@@ -29,11 +51,13 @@ describe('Page API', () => {
     await Template.deleteMany({});
     await Page.deleteMany({});
     await Action.deleteMany({});
+    await User.destroy({ where: {} });
   });
 
   it('POST /api/pages creates a page and logs action', async () => {
     const res = await request(app)
       .post('/api/pages')
+      .set('Authorization', `Bearer ${token}`)
       .send({
         page_name: 'Landing Page',
         template: templateId
@@ -51,6 +75,7 @@ describe('Page API', () => {
     it('POST /api/pages fails to create a page', async () => {
     const res = await request(app)
         .post('/api/pages')
+        .set('Authorization', `Bearer ${token}`)
         .send({
             page_name: 'Landing Page'  //missing the template
             });
@@ -63,7 +88,9 @@ describe('Page API', () => {
         page_name: 'Landing Page',
         template: templateId
     });
-    const res = await request(app).get('/api/pages');
+    const res = await request(app)
+      .get('/api/pages')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
 

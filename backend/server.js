@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
     await sequelize.authenticate();
     console.log('MySQL connection established via Sequelize');
     if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync();
+      await sequelize.sync({alter:true});
     }
 
   } catch(err) {
