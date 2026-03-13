@@ -24,13 +24,47 @@ export function setupFunctionPalette() {
     item.addEventListener("dragstart", (e) => {
       item.classList.add("dragging");
       e.dataTransfer.effectAllowed = "copy";
-      e.dataTransfer.setData("text/plain", item.dataset.type || "");
+
+      const payload = {
+        type: item.dataset.type || "",
+      };
+
+      const countInput = item.querySelector(".function-count-input");
+      if (countInput) {
+        payload.count = parseConfiguredCount(countInput.value, countInput.min, countInput.max);
+      }
+
+      e.dataTransfer.setData("text/plain", JSON.stringify(payload));
     });
 
     item.addEventListener("dragend", () => {
       item.classList.remove("dragging");
     });
   });
+}
+
+function parseConfiguredCount(rawValue, minValue = 1, maxValue = 10) {
+  const min = parseInt(minValue, 10) || 1;
+  const max = parseInt(maxValue, 10) || 10;
+  const parsed = parseInt(rawValue, 10);
+
+  if (Number.isNaN(parsed)) return min;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function parseDropPayload(rawData) {
+  if (!rawData) return null;
+
+  try {
+    const parsed = JSON.parse(rawData);
+    if (parsed && typeof parsed === "object" && parsed.type) {
+      return parsed;
+    }
+  } catch (_error) {
+    return { type: rawData };
+  }
+
+  return null;
 }
 
 // ---------- Canvas behavior ----------
@@ -63,19 +97,19 @@ export function setupBuilderCanvas() {
     e.preventDefault();
     canvas.classList.remove("drag-over");
 
-    const type = e.dataTransfer.getData("text/plain");
-    if (!type) return;
+    const payload = parseDropPayload(e.dataTransfer.getData("text/plain"));
+    if (!payload?.type) return;
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    addFunctionToCanvas(type, x, y);
+    addFunctionToCanvas(payload.type, x, y, payload);
   });
 }
 
 // --- Add widgets at a specific position (with boundaries) ---
-export function addFunctionToCanvas(type, x, y) {
+export function addFunctionToCanvas(type, x, y, config = {}) {
   const canvas = document.getElementById("builderCanvas");
   if (!canvas) return;
 
@@ -83,22 +117,23 @@ export function addFunctionToCanvas(type, x, y) {
   if (placeholder) placeholder.remove();
 
   let widget;
+  const configuredCount = parseConfiguredCount(config.count, 1, 10);
 
   switch (type) {
     case "accordion":
-      widget = createAccordionWidget();
+      widget = createAccordionWidget(configuredCount);
       break;
     case "tabs":
-      widget = createTabsWidget();
+      widget = createTabsWidget(configuredCount);
       break;
     case "dropdown":
-      widget = createDropdownWidget();
+      widget = createDropdownWidget(configuredCount);
       break;
     case "textbox":
       widget = createTextboxWidget();
       break;
     case "checkbox":
-      widget = createCheckboxWidget();
+      widget = createCheckboxWidget(configuredCount);
       break;
     case "progressBar":
       widget = createProgressBarWidget();

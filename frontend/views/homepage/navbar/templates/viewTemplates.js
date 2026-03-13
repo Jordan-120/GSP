@@ -1,11 +1,9 @@
-// frontend/views/homepage/navbar/templates/viewTemplates.js
-
-const API_BASE = "/api/templates";
+const API_BASE = '/api/templates';
+const MAX_TEMPLATES = 10;
 
 let templates = [];
 let activeTemplateId = null;
 
-// Published library modal state
 let pubModal = null;
 let pubListEl = null;
 let pubTabsEl = null;
@@ -20,12 +18,10 @@ let selectedPublishedTemplate = null;
 let selectedPublishedPages = [];
 let selectedPublishedPageIndex = 0;
 
-// Status box in template tab
 let statusBoxEl = null;
 
-/** ✅ FIX: must use authToken (your login stores authToken) */
 function getToken() {
-  return localStorage.getItem("authToken");
+  return localStorage.getItem('authToken');
 }
 
 function authHeaders() {
@@ -33,23 +29,20 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// ---------- Public API ----------
-
 export async function initTemplateStore() {
   if (templates.length > 0) return;
   await reloadMyTemplatesFromServer({ fallbackIfEmpty: true });
 }
 
-// Wire up the Template tab UI
 export function setupTemplateControls() {
-  const templateSelect = document.getElementById("templateSelect");
-  const newTemplateButton = document.getElementById("newTemplateButton");
-  const downloadTemplateButton = document.getElementById("downloadTemplateButton");
-  const publishTemplateButton = document.getElementById("publishTemplateButton");
-  const deleteTemplateButton = document.getElementById("deleteTemplateButton");
-  const templateSearchInput = document.getElementById("templateSearchInput");
-  const templateSearchButton = document.getElementById("templateSearchButton");
-  const saveTemplateButton = document.getElementById("saveTemplateButton");
+  const templateSelect = document.getElementById('templateSelect');
+  const newTemplateButton = document.getElementById('newTemplateButton');
+  const downloadTemplateButton = document.getElementById('downloadTemplateButton');
+  const publishTemplateButton = document.getElementById('publishTemplateButton');
+  const deleteTemplateButton = document.getElementById('deleteTemplateButton');
+  const templateSearchInput = document.getElementById('templateSearchInput');
+  const templateSearchButton = document.getElementById('templateSearchButton');
+  const saveTemplateButton = document.getElementById('saveTemplateButton');
 
   if (
     !templateSelect ||
@@ -61,7 +54,7 @@ export function setupTemplateControls() {
     !templateSearchInput ||
     !templateSearchButton
   ) {
-    console.warn("setupTemplateControls: one or more template controls are missing");
+    console.warn('setupTemplateControls: one or more template controls are missing');
     return;
   }
 
@@ -71,17 +64,22 @@ export function setupTemplateControls() {
   renderTemplateSelect();
   updateStatusBox();
 
-  templateSelect.addEventListener("change", (e) => {
+  templateSelect.addEventListener('change', (e) => {
     const newId = e.target.value;
     setActiveTemplateById(newId);
     updateStatusBox();
   });
 
-  newTemplateButton.addEventListener("click", () => {
-    const name = prompt("Template name:", `Template ${templates.length + 1}`);
+  newTemplateButton.addEventListener('click', () => {
+    if (templates.length >= MAX_TEMPLATES) {
+      alert(`You can only have up to ${MAX_TEMPLATES} templates per user.`);
+      return;
+    }
+
+    const name = prompt('Template name:', `Template ${templates.length + 1}`);
     if (!name) return;
 
-    document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+    document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
 
     const tpl = createNewTemplate(name);
     renderTemplateSelect();
@@ -89,27 +87,26 @@ export function setupTemplateControls() {
     updateStatusBox();
   });
 
-  saveTemplateButton.addEventListener("click", () => {
-    document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+  saveTemplateButton.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
     saveActiveTemplate();
   });
 
-  downloadTemplateButton.addEventListener("click", () => {
-    document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+  downloadTemplateButton.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
     downloadActiveTemplate();
   });
 
-  publishTemplateButton.addEventListener("click", () => {
-    document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+  publishTemplateButton.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
     publishActiveTemplate();
   });
 
-  deleteTemplateButton.addEventListener("click", () => {
-    document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+  deleteTemplateButton.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
     deleteActiveTemplate();
   });
 
-  // ✅ Search button now searches Published Library and opens popup
   async function performPublishedSearch() {
     const term = templateSearchInput.value.trim();
     if (!term) {
@@ -121,21 +118,20 @@ export function setupTemplateControls() {
       await openPublishedLibrary(term);
     } catch (err) {
       console.error(err);
-      alert("Error searching published templates.");
+      alert('Error searching published templates.');
     }
   }
 
-  templateSearchButton.addEventListener("click", () => performPublishedSearch());
+  templateSearchButton.addEventListener('click', () => performPublishedSearch());
 
-  templateSearchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
+  templateSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
       e.preventDefault();
       performPublishedSearch();
     }
   });
 
-  // Keep status box synced if other parts switch templates
-  document.addEventListener("templateChanged", () => {
+  document.addEventListener('templateChanged', () => {
     renderTemplateSelect();
     updateStatusBox();
   });
@@ -149,24 +145,23 @@ export function getTemplates() {
   return templates;
 }
 
-// ---------- Internal helpers ----------
-
 function createNewTemplate(name) {
   const tpl = {
     id: generateId(),
     name,
     pages: [
       {
-        name: "Home",
-        content: "",
+        name: 'Home',
+        content: '',
         style: {
-          backgroundColor: "#ffffff",
-          height: "700px",
+          backgroundColor: '#ffffff',
+          height: '700px',
           gridEnabled: true,
+          width: '800px',
         },
       },
     ],
-    publish_status: "Draft",
+    publish_status: 'Draft',
     denied_reason_text: null,
     publishedAt: null,
   };
@@ -177,7 +172,7 @@ function createNewTemplate(name) {
 function setActiveTemplateById(id) {
   const tpl = templates.find((t) => t.id === id);
   if (!tpl) return;
-  document.dispatchEvent(new CustomEvent("beforeTemplateChange"));
+  document.dispatchEvent(new CustomEvent('beforeTemplateChange'));
   setActiveTemplateIdAndNotify(id);
 }
 
@@ -185,58 +180,60 @@ function setActiveTemplateIdAndNotify(id) {
   activeTemplateId = id;
   renderTemplateSelect();
   document.dispatchEvent(
-    new CustomEvent("templateChanged", {
+    new CustomEvent('templateChanged', {
       detail: { templateId: activeTemplateId },
     })
   );
 }
 
 function renderTemplateSelect() {
-  const select = document.getElementById("templateSelect");
+  const select = document.getElementById('templateSelect');
+  const newTemplateButton = document.getElementById('newTemplateButton');
   if (!select) return;
 
   select.innerHTML = templates
     .map((tpl) => {
-      let labelTag = "";
-      if (tpl.publish_status === "Published") labelTag = " (Published)";
-      else if (tpl.publish_status === "Requested") labelTag = " (Pending)";
-      else if (tpl.publish_status === "Denied") labelTag = " (Denied)";
+      let labelTag = '';
+      if (tpl.publish_status === 'Published') labelTag = ' (Published)';
+      else if (tpl.publish_status === 'Requested') labelTag = ' (Pending)';
+      else if (tpl.publish_status === 'Denied') labelTag = ' (Denied)';
 
       return `
-        <option value="${tpl.id}" ${tpl.id === activeTemplateId ? "selected" : ""}>
+        <option value="${tpl.id}" ${tpl.id === activeTemplateId ? 'selected' : ''}>
           ${tpl.name}${labelTag}
         </option>
       `;
     })
-    .join("");
+    .join('');
+
+  if (newTemplateButton) {
+    newTemplateButton.disabled = templates.length >= MAX_TEMPLATES;
+  }
 }
 
 function generateId() {
   return `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// ---------- Denied message box ----------
-
 function ensureTemplateStatusBox() {
-  // Insert right under the template dropdown label
-  const templatePanel = document.querySelector(".template-controls");
-  const templateLabel = document.querySelector(".template-label");
+  const templatePanel = document.querySelector('.template-controls');
+  const templateLabel = document.querySelector('.template-label');
   if (!templatePanel || !templateLabel) return;
 
-  let box = document.getElementById("templateStatusBox");
+  let box = document.getElementById('templateStatusBox');
   if (!box) {
-    box = document.createElement("div");
-    box.id = "templateStatusBox";
-    box.style.display = "none";
-    box.style.padding = "8px 10px";
-    box.style.borderRadius = "10px";
-    box.style.fontSize = "12px";
-    box.style.lineHeight = "1.2";
-    box.style.border = "1px solid #ccc";
-    box.style.background = "#f7f7f7";
-    box.style.marginTop = "6px";
+    box = document.createElement('div');
+    box.id = 'templateStatusBox';
+    box.style.display = 'none';
+    box.style.padding = '8px 10px';
+    box.style.borderRadius = '10px';
+    box.style.fontSize = '12px';
+    box.style.lineHeight = '1.2';
+    box.style.border = '1px solid #ccc';
+    box.style.background = '#f7f7f7';
+    box.style.marginTop = '6px';
 
-    templateLabel.insertAdjacentElement("afterend", box);
+    templateLabel.insertAdjacentElement('afterend', box);
   }
   statusBoxEl = box;
 }
@@ -246,43 +243,41 @@ function updateStatusBox() {
 
   const tpl = getActiveTemplate();
   if (!tpl) {
-    statusBoxEl.style.display = "none";
+    statusBoxEl.style.display = 'none';
     return;
   }
 
-  if (tpl.publish_status === "Denied" && tpl.denied_reason_text) {
-    statusBoxEl.style.display = "block";
-    statusBoxEl.style.borderColor = "#d9534f";
-    statusBoxEl.style.background = "#ffe9e9";
+  if (tpl.publish_status === 'Denied' && tpl.denied_reason_text) {
+    statusBoxEl.style.display = 'block';
+    statusBoxEl.style.borderColor = '#d9534f';
+    statusBoxEl.style.background = '#ffe9e9';
     statusBoxEl.innerHTML = `<b>Denied:</b> ${escapeHtml(tpl.denied_reason_text)}<br/><span style="color:#555;">You can edit and re-submit using “Submit for Publishing”.</span>`;
     return;
   }
 
-  if (tpl.publish_status === "Requested") {
-    statusBoxEl.style.display = "block";
-    statusBoxEl.style.borderColor = "#2b6cb0";
-    statusBoxEl.style.background = "#eef5ff";
-    statusBoxEl.innerHTML = `<b>Pending Approval:</b> This template is waiting for an Admin review.`;
+  if (tpl.publish_status === 'Requested') {
+    statusBoxEl.style.display = 'block';
+    statusBoxEl.style.borderColor = '#2b6cb0';
+    statusBoxEl.style.background = '#eef5ff';
+    statusBoxEl.innerHTML = '<b>Pending Approval:</b> This template is waiting for an Admin review.';
     return;
   }
 
-  if (tpl.publish_status === "Published") {
-    statusBoxEl.style.display = "block";
-    statusBoxEl.style.borderColor = "#2e7d32";
-    statusBoxEl.style.background = "#e9ffe9";
-    statusBoxEl.innerHTML = `<b>Published:</b> This template is live in the library.`;
+  if (tpl.publish_status === 'Published') {
+    statusBoxEl.style.display = 'block';
+    statusBoxEl.style.borderColor = '#2e7d32';
+    statusBoxEl.style.background = '#e9ffe9';
+    statusBoxEl.innerHTML = '<b>Published:</b> This template is live in the library.';
     return;
   }
 
-  statusBoxEl.style.display = "none";
+  statusBoxEl.style.display = 'none';
 }
-
-// ---------- Download / Publish / Delete / Save ----------
 
 function downloadActiveTemplate() {
   const tpl = getActiveTemplate();
   if (!tpl) {
-    alert("No active template to download.");
+    alert('No active template to download.');
     return;
   }
 
@@ -299,11 +294,11 @@ function downloadActiveTemplate() {
   };
 
   const json = JSON.stringify(snapshot, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
+  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  const safeName = tpl.name.replace(/\s+/g, "_").toLowerCase();
+  const a = document.createElement('a');
+  const safeName = tpl.name.replace(/\s+/g, '_').toLowerCase();
   a.href = url;
   a.download = `${safeName}.json`;
   document.body.appendChild(a);
@@ -316,17 +311,16 @@ function downloadActiveTemplate() {
 async function publishActiveTemplate() {
   const tpl = getActiveTemplate();
   if (!tpl) {
-    alert("No active template to publish.");
+    alert('No active template to publish.');
     return;
   }
 
-  // Must be saved (needs Mongo _id)
   if (!tpl._id) {
-    alert("Please Save your template first, then Publish.");
+    alert('Please Save your template first, then Publish.');
     return;
   }
 
-  if (tpl.publish_status === "Denied" && tpl.denied_reason_text) {
+  if (tpl.publish_status === 'Denied' && tpl.denied_reason_text) {
     const resubmit = confirm(
       `This template was denied for this reason:\n\n"${tpl.denied_reason_text}"\n\nResubmit for approval?`
     );
@@ -335,14 +329,14 @@ async function publishActiveTemplate() {
 
   try {
     const res = await fetch(`${API_BASE}/${tpl._id}/request-publish`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({}),
     });
 
-    if (!res.ok) throw new Error("Publish request failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || 'Publish request failed');
 
-    const data = await res.json();
     tpl.publish_status = data.template.publish_status;
     tpl.denied_reason_text = data.template.denied_reason_text || null;
 
@@ -351,56 +345,73 @@ async function publishActiveTemplate() {
     alert(`Template "${tpl.name}" submitted for admin approval.`);
   } catch (err) {
     console.error(err);
-    alert("Error submitting template for publish approval.");
+    alert(err.message || 'Error submitting template for publish approval.');
   }
 }
 
-function deleteActiveTemplate() {
+async function deleteActiveTemplate() {
   const tpl = getActiveTemplate();
   if (!tpl) {
-    alert("No active template to delete.");
+    alert('No active template to delete.');
     return;
   }
 
   if (templates.length === 1) {
-    alert("You must have at least one template. Create a new one before deleting this.");
+    alert('You must have at least one template.');
     return;
   }
 
   const confirmed = confirm(`Are you sure you want to delete template "${tpl.name}"? This cannot be undone.`);
   if (!confirmed) return;
 
-  templates = templates.filter((t) => t.id !== tpl.id);
+  try {
+    if (tpl._id) {
+      const res = await fetch(`${API_BASE}/${tpl._id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      });
 
-  if (templates.length > 0) {
-    activeTemplateId = templates[0].id;
-  } else {
-    activeTemplateId = null;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || 'Delete failed');
+      }
+    }
+
+    templates = templates.filter((t) => t.id !== tpl.id);
+
+    if (templates.length > 0) {
+      activeTemplateId = templates[0].id;
+    } else {
+      activeTemplateId = null;
+    }
+
+    renderTemplateSelect();
+    updateStatusBox();
+
+    document.dispatchEvent(
+      new CustomEvent('templateChanged', {
+        detail: { templateId: activeTemplateId },
+      })
+    );
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Error deleting template.');
   }
-
-  renderTemplateSelect();
-  updateStatusBox();
-
-  document.dispatchEvent(
-    new CustomEvent("templateChanged", {
-      detail: { templateId: activeTemplateId },
-    })
-  );
 }
 
-function saveActiveTemplate() {
+async function saveActiveTemplate() {
   const tpl = getActiveTemplate();
   if (!tpl) {
-    alert("No active template to save.");
+    alert('No active template to save.');
     return;
   }
 
-  const newName = prompt("Enter a name for this template:", tpl.name);
+  const newName = prompt('Enter a name for this template:', tpl.name);
   if (newName === null) return;
 
   const trimmed = newName.trim();
   if (!trimmed) {
-    alert("Template name cannot be empty.");
+    alert('Template name cannot be empty.');
     return;
   }
 
@@ -412,57 +423,51 @@ function saveActiveTemplate() {
 
   const isNew = !tpl._id;
   const url = isNew ? API_BASE : `${API_BASE}/${tpl._id}`;
-  const method = isNew ? "POST" : "PUT";
+  const method = isNew ? 'POST' : 'PUT';
 
-  fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({
-      template_name: tpl.name,
-      publish_status: tpl.publish_status || "Draft",
-      denied_reason_text: tpl.denied_reason_text || null,
-      pages: tpl.pages,
-    }),
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error("Save failed");
-      return res.json();
-    })
-    .then((data) => {
-      alert(`Template "${data.template_name}" has been ${isNew ? "created" : "updated"} successfully.`);
-      tpl._id = data._id;
-      tpl.id = data._id;
-
-      tpl.publish_status = data.publish_status || tpl.publish_status;
-      tpl.denied_reason_text = data.denied_reason_text || null;
-
-      renderTemplateSelect();
-      updateStatusBox();
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("Error saving template.");
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        template_name: tpl.name,
+        publish_status: tpl.publish_status || 'Draft',
+        denied_reason_text: tpl.denied_reason_text || null,
+        pages: tpl.pages,
+      }),
     });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || 'Save failed');
+
+    alert(`Template "${data.template_name}" has been ${isNew ? 'created' : 'updated'} successfully.`);
+    tpl._id = data._id;
+    tpl.id = data._id;
+    tpl.publish_status = data.publish_status || tpl.publish_status;
+    tpl.denied_reason_text = data.denied_reason_text || null;
+
+    renderTemplateSelect();
+    updateStatusBox();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Error saving template.');
+  }
 }
 
-// ---------- Published Library Modal ----------
-
 function ensurePublishedLibraryModal() {
-  if (document.getElementById("publishedLibraryModal")) {
-    // Already exists
-    pubModal = document.getElementById("publishedLibraryModal");
-    pubListEl = document.getElementById("pubList");
-    pubTabsEl = document.getElementById("pubTabs");
-    pubFrameEl = document.getElementById("pubFrame");
-    pubTitleEl = document.getElementById("pubTitle");
-    pubMetaEl = document.getElementById("pubMeta");
-    pubDownloadBtn = document.getElementById("pubDownloadBtn");
-    pubCloseBtn = document.getElementById("pubCloseBtn");
+  if (document.getElementById('publishedLibraryModal')) {
+    pubModal = document.getElementById('publishedLibraryModal');
+    pubListEl = document.getElementById('pubList');
+    pubTabsEl = document.getElementById('pubTabs');
+    pubFrameEl = document.getElementById('pubFrame');
+    pubTitleEl = document.getElementById('pubTitle');
+    pubMetaEl = document.getElementById('pubMeta');
+    pubDownloadBtn = document.getElementById('pubDownloadBtn');
+    pubCloseBtn = document.getElementById('pubCloseBtn');
     return;
   }
 
-  // Inject minimal modal styles (so you don't need to edit CSS file)
-  const style = document.createElement("style");
+  const style = document.createElement('style');
   style.textContent = `
     .pub-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.45);
@@ -520,9 +525,9 @@ function ensurePublishedLibraryModal() {
   `;
   document.head.appendChild(style);
 
-  const backdrop = document.createElement("div");
-  backdrop.className = "pub-backdrop";
-  backdrop.id = "publishedLibraryModal";
+  const backdrop = document.createElement('div');
+  backdrop.className = 'pub-backdrop';
+  backdrop.id = 'publishedLibraryModal';
 
   backdrop.innerHTML = `
     <div class="pub-modal" role="dialog" aria-modal="true">
@@ -562,37 +567,37 @@ function ensurePublishedLibraryModal() {
   document.body.appendChild(backdrop);
 
   pubModal = backdrop;
-  pubListEl = document.getElementById("pubList");
-  pubTabsEl = document.getElementById("pubTabs");
-  pubFrameEl = document.getElementById("pubFrame");
-  pubTitleEl = document.getElementById("pubTitle");
-  pubMetaEl = document.getElementById("pubMeta");
-  pubDownloadBtn = document.getElementById("pubDownloadBtn");
-  pubCloseBtn = document.getElementById("pubCloseBtn");
+  pubListEl = document.getElementById('pubList');
+  pubTabsEl = document.getElementById('pubTabs');
+  pubFrameEl = document.getElementById('pubFrame');
+  pubTitleEl = document.getElementById('pubTitle');
+  pubMetaEl = document.getElementById('pubMeta');
+  pubDownloadBtn = document.getElementById('pubDownloadBtn');
+  pubCloseBtn = document.getElementById('pubCloseBtn');
 
-  const pubCloseBtn2 = document.getElementById("pubCloseBtn2");
+  const pubCloseBtn2 = document.getElementById('pubCloseBtn2');
 
   function close() {
-    pubModal.classList.remove("show");
+    pubModal.classList.remove('show');
   }
 
-  pubCloseBtn.addEventListener("click", close);
-  pubCloseBtn2.addEventListener("click", close);
+  pubCloseBtn.addEventListener('click', close);
+  pubCloseBtn2.addEventListener('click', close);
 
-  pubModal.addEventListener("click", (e) => {
+  pubModal.addEventListener('click', (e) => {
     if (e.target === pubModal) close();
   });
 
-  pubDownloadBtn.addEventListener("click", async () => {
+  pubDownloadBtn.addEventListener('click', async () => {
     if (!selectedPublishedTemplate) return;
 
     try {
       pubDownloadBtn.disabled = true;
-      pubDownloadBtn.textContent = "Downloading…";
+      pubDownloadBtn.textContent = 'Downloading…';
 
       const res = await fetch(`${API_BASE}/published/${selectedPublishedTemplate._id}/copy`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({}),
       });
 
@@ -601,7 +606,6 @@ function ensurePublishedLibraryModal() {
         throw new Error(data?.message || `Download failed (${res.status})`);
       }
 
-      // Refresh user's templates list and select the new copy
       await reloadMyTemplatesFromServer({ fallbackIfEmpty: true });
 
       const newId = data?.template?._id;
@@ -614,13 +618,13 @@ function ensurePublishedLibraryModal() {
       renderTemplateSelect();
       updateStatusBox();
 
-      alert("Template downloaded to your account as a Draft copy.");
-      pubModal.classList.remove("show");
+      alert('Template downloaded to your account as a Draft copy.');
+      pubModal.classList.remove('show');
     } catch (err) {
       console.error(err);
       alert(`Error downloading template: ${err.message}`);
     } finally {
-      pubDownloadBtn.textContent = "Download to My Templates";
+      pubDownloadBtn.textContent = 'Download to My Templates';
       pubDownloadBtn.disabled = !selectedPublishedTemplate;
     }
   });
@@ -629,15 +633,14 @@ function ensurePublishedLibraryModal() {
 async function openPublishedLibrary(searchTerm) {
   if (!pubModal) ensurePublishedLibraryModal();
 
-  pubTitleEl.textContent = "Searching…";
-  pubMetaEl.textContent = "";
-  pubTabsEl.innerHTML = "";
+  pubTitleEl.textContent = 'Searching…';
+  pubMetaEl.textContent = '';
+  pubTabsEl.innerHTML = '';
   pubFrameEl.srcdoc = "<html><body style='font-family:Arial;padding:16px;'>Loading…</body></html>";
   pubDownloadBtn.disabled = true;
 
-  pubModal.classList.add("show");
+  pubModal.classList.add('show');
 
-  // Fetch published templates
   const res = await fetch(`${API_BASE}/published?search=${encodeURIComponent(searchTerm)}`, {
     headers: { ...authHeaders() },
   });
@@ -656,42 +659,42 @@ async function openPublishedLibrary(searchTerm) {
 }
 
 function renderPublishedList() {
-  pubListEl.innerHTML = "";
+  pubListEl.innerHTML = '';
 
   if (!publishedResults.length) {
-    pubListEl.innerHTML = `<div style="color:#666;font-size:12px;">No published templates found.</div>`;
-    pubTitleEl.textContent = "No results";
-    pubMetaEl.textContent = "";
-    pubTabsEl.innerHTML = "";
+    pubListEl.innerHTML = '<div style="color:#666;font-size:12px;">No published templates found.</div>';
+    pubTitleEl.textContent = 'No results';
+    pubMetaEl.textContent = '';
+    pubTabsEl.innerHTML = '';
     pubFrameEl.srcdoc = "<html><body style='font-family:Arial;padding:16px;'>No preview available.</body></html>";
     pubDownloadBtn.disabled = true;
     return;
   }
 
   for (const t of publishedResults) {
-    const item = document.createElement("div");
-    item.className = "pub-item";
+    const item = document.createElement('div');
+    item.className = 'pub-item';
     item.dataset.id = t._id;
 
-    const updated = t.updated_at ? new Date(t.updated_at).toLocaleString() : "";
+    const updated = t.updated_at ? new Date(t.updated_at).toLocaleString() : '';
     item.innerHTML = `
-      <div class="pub-item-title">${escapeHtml(t.template_name || "Untitled")}</div>
+      <div class="pub-item-title">${escapeHtml(t.template_name || 'Untitled')}</div>
       <div class="pub-item-meta">Updated: ${escapeHtml(updated)}</div>
     `;
 
-    item.addEventListener("click", async () => {
+    item.addEventListener('click', async () => {
       selectPublishedTemplate(t);
-      pubListEl.querySelectorAll(".pub-item").forEach((x) => x.classList.remove("active"));
-      item.classList.add("active");
+      pubListEl.querySelectorAll('.pub-item').forEach((x) => x.classList.remove('active'));
+      item.classList.add('active');
       await loadPublishedPreviewPages(t._id);
     });
 
     pubListEl.appendChild(item);
   }
 
-  pubTitleEl.textContent = "Select a template to preview";
-  pubMetaEl.textContent = "Click a result on the left.";
-  pubTabsEl.innerHTML = "";
+  pubTitleEl.textContent = 'Select a template to preview';
+  pubMetaEl.textContent = 'Click a result on the left.';
+  pubTabsEl.innerHTML = '';
   pubFrameEl.srcdoc = "<html><body style='font-family:Arial;padding:16px;'>Select a template to preview.</body></html>";
   pubDownloadBtn.disabled = true;
 }
@@ -700,13 +703,13 @@ function selectPublishedTemplate(t) {
   selectedPublishedTemplate = t;
   pubDownloadBtn.disabled = false;
 
-  const updated = t.updated_at ? new Date(t.updated_at).toLocaleString() : "";
-  pubTitleEl.textContent = t.template_name || "Untitled";
-  pubMetaEl.textContent = updated ? `Updated: ${updated}` : "";
+  const updated = t.updated_at ? new Date(t.updated_at).toLocaleString() : '';
+  pubTitleEl.textContent = t.template_name || 'Untitled';
+  pubMetaEl.textContent = updated ? `Updated: ${updated}` : '';
 }
 
 async function loadPublishedPreviewPages(templateId) {
-  pubTabsEl.innerHTML = "";
+  pubTabsEl.innerHTML = '';
   pubFrameEl.srcdoc = "<html><body style='font-family:Arial;padding:16px;'>Loading preview…</body></html>";
 
   const res = await fetch(`${API_BASE}/published/${templateId}/pages`, {
@@ -727,20 +730,20 @@ async function loadPublishedPreviewPages(templateId) {
 }
 
 function renderPublishedTabs() {
-  pubTabsEl.innerHTML = "";
+  pubTabsEl.innerHTML = '';
   const maxTabs = 10;
   const count = selectedPublishedPages.length;
 
   for (let i = 0; i < maxTabs; i++) {
     const has = i < count;
 
-    const btn = document.createElement("button");
-    btn.className = "pub-tab" + (has ? "" : " disabled");
-    btn.textContent = has ? String(i + 1) : "N/A";
+    const btn = document.createElement('button');
+    btn.className = 'pub-tab' + (has ? '' : ' disabled');
+    btn.textContent = has ? String(i + 1) : 'N/A';
 
-    if (has && i === selectedPublishedPageIndex) btn.classList.add("active");
+    if (has && i === selectedPublishedPageIndex) btn.classList.add('active');
 
-    btn.addEventListener("click", () => {
+    btn.addEventListener('click', () => {
       if (!has) return;
       selectedPublishedPageIndex = i;
       renderPublishedTabs();
@@ -761,12 +764,10 @@ function showPublishedPage(index) {
   pubFrameEl.srcdoc = p.html || "<html><body style='font-family:Arial;padding:16px;'>No HTML.</body></html>";
 }
 
-// ---------- Server reload ----------
-
 async function reloadMyTemplatesFromServer({ fallbackIfEmpty = false } = {}) {
   try {
     const res = await fetch(API_BASE, {
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
     });
 
     if (res.ok) {
@@ -783,21 +784,20 @@ async function reloadMyTemplatesFromServer({ fallbackIfEmpty = false } = {}) {
               ? serverTpl.pages
               : [
                   {
-                    name: "Home",
-                    content: "",
+                    name: 'Home',
+                    content: '',
                     style: {
-                      backgroundColor: "#ffffff",
-                      height: "700px",
+                      backgroundColor: '#ffffff',
+                      height: '700px',
                       gridEnabled: true,
+                      width: '800px',
                     },
                   },
                 ],
-            publish_status: serverTpl.publish_status || "Draft",
+            publish_status: serverTpl.publish_status || 'Draft',
             denied_reason_text: serverTpl.denied_reason_text || null,
             publishedAt:
-              serverTpl.publish_status === "Published"
-                ? serverTpl.updated_at || null
-                : null,
+              serverTpl.publish_status === 'Published' ? serverTpl.updated_at || null : null,
           };
         });
 
@@ -806,25 +806,26 @@ async function reloadMyTemplatesFromServer({ fallbackIfEmpty = false } = {}) {
       }
     }
   } catch (err) {
-    console.error("reloadMyTemplatesFromServer error:", err);
+    console.error('reloadMyTemplatesFromServer error:', err);
   }
 
   if (fallbackIfEmpty) {
     const tpl = {
       id: generateId(),
-      name: "Template 1",
+      name: 'Template 1',
       pages: [
         {
-          name: "Home",
-          content: "",
+          name: 'Home',
+          content: '',
           style: {
-            backgroundColor: "#ffffff",
-            height: "700px",
+            backgroundColor: '#ffffff',
+            height: '700px',
             gridEnabled: true,
+            width: '800px',
           },
         },
       ],
-      publish_status: "Draft",
+      publish_status: 'Draft',
       denied_reason_text: null,
       publishedAt: null,
     };
@@ -834,13 +835,11 @@ async function reloadMyTemplatesFromServer({ fallbackIfEmpty = false } = {}) {
   }
 }
 
-// ---------- Utils ----------
-
 function escapeHtml(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(str || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }

@@ -209,7 +209,7 @@
                 <div class="function-palette">
                   <!-- Accordion -->
                   <div
-                    class="function-item"
+                    class="function-item function-item-configurable"
                     draggable="true"
                     data-type="accordion"
                   >
@@ -224,19 +224,47 @@
                       </div>
                     </div>
                     <span class="function-label">Accordion</span>
+                    <div class="function-config" draggable="false">
+                      <input
+                        class="function-count-input"
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value="4"
+                        aria-label="Accordion sections"
+                        draggable="false"
+                      />
+                    </div>
                   </div>
 
                   <!-- Multi-tabs -->
-                  <div class="function-item" draggable="true" data-type="tabs">
+                  <div
+                    class="function-item function-item-configurable"
+                    draggable="true"
+                    data-type="tabs"
+                  >
                     <div class="function-thumb tabs-thumb">
                       <span>Tab</span>
                     </div>
                     <span class="function-label">Multi-tabs</span>
+                    <div class="function-config" draggable="false">
+                      <input
+                        class="function-count-input"
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value="4"
+                        aria-label="Multi-tab count"
+                        draggable="false"
+                      />
+                    </div>
                   </div>
 
                   <!-- Dropdown -->
                   <div
-                    class="function-item"
+                    class="function-item function-item-configurable"
                     draggable="true"
                     data-type="dropdown"
                   >
@@ -244,6 +272,18 @@
                       <div class="thumb-bar">▼</div>
                     </div>
                     <span class="function-label">Dropdown</span>
+                    <div class="function-config" draggable="false">
+                      <input
+                        class="function-count-input"
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value="4"
+                        aria-label="Dropdown option count"
+                        draggable="false"
+                      />
+                    </div>
                   </div>
 
                   <!-- Text -->
@@ -260,7 +300,7 @@
 
                   <!-- Checkbox -->
                   <div
-                    class="function-item"
+                    class="function-item function-item-configurable"
                     draggable="true"
                     data-type="checkbox"
                   >
@@ -271,6 +311,18 @@
                       <div class="thumb-checkbox"></div>
                     </div>
                     <span class="function-label">Checkbox</span>
+                    <div class="function-config" draggable="false">
+                      <input
+                        class="function-count-input"
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value="4"
+                        aria-label="Checkbox option count"
+                        draggable="false"
+                      />
+                    </div>
                   </div>
 
                   <!-- Progress Bar -->

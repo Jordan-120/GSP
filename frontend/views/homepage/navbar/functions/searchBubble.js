@@ -5,19 +5,25 @@ const HIGHLIGHT_CLASS = "search-highlight";
 
 export function createSearchBubbleWidget() {
   const widget = document.createElement("div");
-  widget.className = "builder-widget search-bubble-widget";
+  widget.className = "builder-widget gs-widget gs-search-widget search-bubble-widget";
 
   widget.innerHTML = `
-    <div class="search-bubble">
-      <input
-        type="text"
-        class="search-bubble-input"
-        placeholder="Search text..."
-      />
+    <div class="gs-widget-header">
+      <span class="gs-widget-kicker">Function</span>
+      <h3>Search Bubble</h3>
     </div>
-    <p class="search-bubble-hint">
-      Type to highlight matching text on this page.
-    </p>
+    <div class="gs-widget-body gs-widget-stack">
+      <div class="search-bubble">
+        <input
+          type="text"
+          class="search-bubble-input"
+          placeholder="Search text..."
+        />
+      </div>
+      <p class="search-bubble-hint">
+        Type to highlight matching text on this page.
+      </p>
+    </div>
   `;
 
   wireSearchBubble(widget);
@@ -104,7 +110,7 @@ function clearHighlights(root) {
     if (!parent) return;
     const textNode = document.createTextNode(span.textContent || "");
     parent.replaceChild(textNode, span);
-    parent.normalize(); // merge adjacent text nodes
+    parent.normalize();
   });
 }
 
@@ -118,9 +124,7 @@ function highlightInTextNode(textNode, qLower, qLen) {
 
   while ((matchIndex = lower.indexOf(qLower, idx)) !== -1) {
     if (matchIndex > idx) {
-      fragment.appendChild(
-        document.createTextNode(text.slice(idx, matchIndex))
-      );
+      fragment.appendChild(document.createTextNode(text.slice(idx, matchIndex)));
     }
 
     const span = document.createElement("span");

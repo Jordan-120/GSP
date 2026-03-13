@@ -1,22 +1,41 @@
 // navbar/functions/multi-tabs.js
 // Creates the Multi-tabs widget and wires up tab behavior
 
-export function createTabsWidget() {
+function buildTabButton(index) {
+  return `
+    <button type="button" class="tab-btn" data-tab="${index}">Tab ${index}</button>
+  `;
+}
+
+function buildTabContent(index) {
+  return `
+    <div class="tab-content" data-tab="${index}">
+      Content for tab ${index} (double-click to edit)
+    </div>
+  `;
+}
+
+export function createTabsWidget(tabCount = 4) {
+  const safeCount = Math.max(1, Math.min(10, Number(tabCount) || 4));
   const widget = document.createElement("div");
-  widget.className = "builder-widget";
+  widget.className = "builder-widget gs-widget gs-tabs-widget";
+
+  const buttons = Array.from({ length: safeCount }, (_, index) =>
+    buildTabButton(index + 1)
+  ).join("");
+  const contents = Array.from({ length: safeCount }, (_, index) =>
+    buildTabContent(index + 1)
+  ).join("");
 
   widget.innerHTML = `
-    <h3>Multi-tabs</h3>
-    <div class="tabs-header">
-      <button type="button" class="tab-btn" data-tab="1">Tab 1</button>
-      <button type="button" class="tab-btn" data-tab="2">Tab 2</button>
-      <button type="button" class="tab-btn" data-tab="3">Tab 3</button>
-      <button type="button" class="tab-btn" data-tab="4">Tab 4</button>
+    <div class="gs-widget-header">
+      <span class="gs-widget-kicker">Function</span>
+      <h3>Multi-tabs</h3>
     </div>
-    <div class="tab-content" data-tab="1">Content for tab 1 (double-click to edit)</div>
-    <div class="tab-content" data-tab="2" style="display:none;">Content for tab 2 (double-click to edit)</div>
-    <div class="tab-content" data-tab="3" style="display:none;">Content for tab 3 (double-click to edit)</div>
-    <div class="tab-content" data-tab="4" style="display:none;">Content for tab 4 (double-click to edit)</div>
+    <div class="gs-widget-body gs-widget-stack">
+      <div class="tabs-header">${buttons}</div>
+      <div class="tabs-content-shell">${contents}</div>
+    </div>
   `;
 
   setupTabs(widget);
@@ -31,11 +50,16 @@ function setupTabs(widgetRoot) {
     btn.addEventListener("click", () => {
       const tabId = btn.dataset.tab;
 
-      buttons.forEach((b) => (b.disabled = false));
-      btn.disabled = true;
+      buttons.forEach((b) => {
+        b.disabled = false;
+        b.classList.remove("active");
+      });
 
-      contents.forEach((c) => {
-        c.style.display = c.dataset.tab === tabId ? "block" : "none";
+      btn.disabled = true;
+      btn.classList.add("active");
+
+      contents.forEach((content) => {
+        content.style.display = content.dataset.tab === tabId ? "block" : "none";
       });
     });
   });
