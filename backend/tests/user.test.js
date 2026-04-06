@@ -1,13 +1,12 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
-const app = require('../app'); // My Express app
-//const app = require('../server'); // My Express app
+const app = require('../app'); 
 const User = require('../models/userModel');
 const Action = require('../models/actionModel');
-const sequelize = require('../config/sequelize'); // importing sequelize
+const sequelize = require('../config/sequelize'); 
 
 beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URI); // use .env.test for Action logs
+  await mongoose.connect(process.env.MONGO_URI); 
   await sequelize.sync({ force: true });
 
 });
@@ -97,7 +96,7 @@ describe('User CRUD API', () => {
   });
 
   it('PUT /api/users/:id fails to update a user, user not found', async () => {
-    //const fakeId = new mongoose.Types.ObjectId();
+
     const res = await request(app)
       .put(`/api/users/-1`)
       .send({ first_name: 'Updated' });

@@ -6,17 +6,17 @@ const Page = require('../models/pageModel');
 const Action = require('../models/actionModel');
 const { generateToken } = require('../utils/jwt');
 const User = require('../models/userModel'); 
-const sequelize = require('../config/sequelize');   // ← REQUIRED
+const sequelize = require('../config/sequelize');   
 
 beforeAll(async () => {
   await mongoose.connect(process.env.MONGO_URI);
-  await sequelize.authenticate();                   // ← REQUIRED
-  await sequelize.sync({ force: true });            // ← REQUIRED
+  await sequelize.authenticate();                   
+  await sequelize.sync({ force: true });            
 });
 
 afterAll(async () => {
   await mongoose.connection.close();
-  await sequelize.close();                          // ← REQUIRED
+  await sequelize.close();                          
 });
 
 describe('Section CRUD API, nested in Page schema', () => {
@@ -28,13 +28,14 @@ describe('Section CRUD API, nested in Page schema', () => {
 
   beforeEach(async () => {
 
-    user = await User.create({                      // ← FIXED (removed const)
+    user = await User.create({                      
       first_name: 'Test',
       last_name: 'User',
       email: 'test@example.com',
       profile_type: 'Registered',
       password_hash: 'password123',
-      password_salt: 'salt'
+      password_salt: 'salt',
+      is_verified: true
     });
 
     userId = user.id;

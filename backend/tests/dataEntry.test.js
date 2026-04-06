@@ -35,7 +35,8 @@ describe('DataEntry CRUD API, nested in Section schema', () => {
       email: 'test@example.com',
       profile_type: 'Registered',
       password_hash: 'password123',
-      password_salt: 'salt'
+      password_salt: 'salt',
+      is_verified: true 
     });
 
     userId = user.id;

@@ -75,6 +75,15 @@ async function logAction({ userId, templateId, action, payload = {} }) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function wrapPagesForPreview(template) {
   const pages = Array.isArray(template.pages) ? template.pages : [];
 
@@ -82,6 +91,11 @@ function wrapPagesForPreview(template) {
     const content = p && typeof p.content === 'string' ? p.content : '';
     const style = p?.style || {};
     const bg = style.backgroundColor || '#ffffff';
+    const width = style.width || '800px';
+    const height = style.height || '700px';
+    const gridCss = style.gridEnabled === false
+      ? 'none'
+      : 'linear-gradient(to right, #f2f2f2 1px, transparent 1px), linear-gradient(to bottom, #f2f2f2 1px, transparent 1px)';
     const isFullDoc = /^\s*<!doctype\s+html|^\s*<html[\s>]/i.test(content);
 
     const html = isFullDoc
@@ -91,12 +105,54 @@ function wrapPagesForPreview(template) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(p?.name || `Page ${idx + 1}`)}</title>
   <style>
-    body { margin: 0; padding: 16px; background: ${bg}; font-family: Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #eef3f9;
+    }
+    body {
+      padding: 16px;
+      overflow: auto;
+      font-family: Arial, sans-serif;
+    }
+    .preview-stage {
+      width: max-content;
+      min-width: 100%;
+    }
+    .preview-canvas {
+      position: relative;
+      overflow: auto;
+      width: ${width};
+      height: ${height};
+      background: ${bg};
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.12);
+      background-image: ${gridCss};
+      background-size: 20px 20px;
+    }
+    .preview-canvas > .builder-placeholder {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: #999;
+      font-size: 13px;
+      margin: 0;
+    }
+    .preview-canvas .builder-widget {
+      position: absolute;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
-${content}
+  <div class="preview-stage">
+    <div class="preview-canvas">${content}</div>
+  </div>
 </body>
 </html>`;
 
@@ -418,10 +474,10 @@ const copyPublishedTemplateToUser = async (req, res) => {
       userId: req.user.id,
       templateId: newTemplate._id,
       action: 'copy_published_template',
-      payload: { sourceTemplateId: source._id, template_name: copyName },
+      payload: { sourceTemplateId: source._id, sourceTemplateName: source.template_name },
     });
 
-    return res.status(201).json({ message: 'Template copied to your account.', template: newTemplate });
+    return res.status(201).json(newTemplate);
   } catch (error) {
     console.error('copyPublishedTemplateToUser error:', error.message);
     return res.status(500).json({ message: 'Error copying published template', error: error.message });
@@ -432,9 +488,9 @@ module.exports = {
   createTemplate,
   getAllTemplates,
   getTemplateById,
-  getTemplatePages,
   updateTemplate,
   deleteTemplate,
+  getTemplatePages,
   requestPublish,
   listPublishedTemplates,
   getPublishedTemplatePages,

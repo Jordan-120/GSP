@@ -2,15 +2,16 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const sequelize = require('../config/sequelize');
 const app = require('../app');
+
 const Template = require('../models/templateModel');
 const Page = require('../models/pageModel');
 const Action = require('../models/actionModel');
-const User = require('../models/userModel'); // Sequelize model
+const User = require('../models/userModel');
 const { generateToken } = require('../utils/jwt');
 
 beforeAll(async () => {
   await mongoose.connect(process.env.MONGO_URI);
-  await sequelize.authenticate();   
+  await sequelize.authenticate();
   await sequelize.sync({ force: true });
 });
 
@@ -22,7 +23,6 @@ afterAll(async () => {
 describe('Page API', () => {
   let templateId;
   let user;
-  let userId;
   let token;
 
   beforeEach(async () => {
@@ -32,10 +32,10 @@ describe('Page API', () => {
       email: 'test@example.com',
       profile_type: 'Registered',
       password_hash: 'password123',
-      password_salt: 'salt'
+      password_salt: 'salt',
+      is_verified: true
     });
 
-    userId = user.id;
     token = generateToken(user);
 
     const template = await Template.create({
@@ -44,6 +44,7 @@ describe('Page API', () => {
       publish_status: 'Draft',
       userId: user.id
     });
+
     templateId = template._id;
   });
 
@@ -54,6 +55,9 @@ describe('Page API', () => {
     await User.destroy({ where: {} });
   });
 
+  // ---------------------------------------------------------
+  // CREATE PAGE
+  // ---------------------------------------------------------
   it('POST /api/pages creates a page and logs action', async () => {
     const res = await request(app)
       .post('/api/pages')
@@ -72,91 +76,115 @@ describe('Page API', () => {
     expect(actionLog.payload.page_name).toBe('Landing Page');
   });
 
-    it('POST /api/pages fails to create a page', async () => {
+  it('POST /api/pages fails when template is missing', async () => {
     const res = await request(app)
-        .post('/api/pages')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-            page_name: 'Landing Page'  //missing the template
-            });
+      .post('/api/pages')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ page_name: 'Landing Page' });
+
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe('Error creating page');
   });
-  
+
+  // ---------------------------------------------------------
+  // GET ALL PAGES
+  // ---------------------------------------------------------
   it('GET /api/pages returns all pages', async () => {
     await Page.create({
-        page_name: 'Landing Page',
-        template: templateId
+      page_name: 'Landing Page',
+      template: templateId
     });
+
     const res = await request(app)
       .get('/api/pages')
       .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-
     expect(res.body.length).toBeGreaterThan(0);
     expect(res.body[0].page_name).toBe('Landing Page');
   });
 
-  
+  // ---------------------------------------------------------
+  // GET PAGE BY ID
+  // ---------------------------------------------------------
   it('GET /api/pages/:id returns a page', async () => {
     const page = await Page.create({
-        page_name: 'Landing Page',
-        template: templateId
+      page_name: 'Landing Page',
+      template: templateId
     });
-    const pageId = page._id;
-    const res = await request(app).get(`/api/pages/${pageId}`);
+
+    const res = await request(app)
+      .get(`/api/pages/${page._id}`)
+      .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
-    expect(res.body._id).toBe(pageId.toString());
+    expect(res.body._id).toBe(page._id.toString());
     expect(res.body.page_name).toBe('Landing Page');
   });
 
-
+  // ---------------------------------------------------------
+  // UPDATE PAGE
+  // ---------------------------------------------------------
   it('PUT /api/pages/:id updates a page and logs action', async () => {
     const page = await Page.create({
-        page_name: 'Landing Page',
-        template: templateId
+      page_name: 'Landing Page',
+      template: templateId
     });
-    const pageId = page._id;
+
     const res = await request(app)
-      .put(`/api/pages/${pageId}`)
+      .put(`/api/pages/${page._id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ page_name: 'Landing Page updated' });
+
     expect(res.statusCode).toBe(200);
     expect(res.body.page_name).toBe('Landing Page updated');
 
     const actionLog = await Action.findOne({ action: 'update_page' });
-    expect(actionLog.pageId.toString()).toBe(pageId.toString());
+    
+    expect(actionLog).not.toBeNull();
+    expect(actionLog.pageId.toString()).toBe(page._id.toString());
     expect(actionLog.payload.updateFields.page_name).toBe('Landing Page updated');
   });
-  
-  it('PUT /api/pages/:id fails to update a page', async () => {
+
+  it('PUT /api/pages/:id fails with invalid ID', async () => {
     const res = await request(app)
-      .put('/api/pages/invalid-page-id')
+      .put('/api/pages/invalid-id')
+      .set('Authorization', `Bearer ${token}`)
       .send({ page_name: 'Landing Page updated' });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe('Error updating page');
   });
-  
+
+  // ---------------------------------------------------------
+  // DELETE PAGE
+  // ---------------------------------------------------------
   it('DELETE /api/pages/:id deletes a page and logs action', async () => {
     const page = await Page.create({
-        page_name: 'Landing Page',
-        template: templateId
+      page_name: 'Landing Page',
+      template: templateId
     });
-    const pageId = page._id;
-    const res = await request(app).delete(`/api/pages/${pageId}`);
+
+    const res = await request(app)
+      .delete(`/api/pages/${page._id}`)
+      .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(200);
     expect(res.body.message).toBe('Page deleted successfully');
 
     const actionLog = await Action.findOne({ action: 'delete_page' });
-    expect(actionLog.pageId.toString()).toBe(pageId.toString());
+    expect(actionLog).not.toBeNull();
+    expect(actionLog.pageId.toString()).toBe(page._id.toString());
     expect(actionLog.payload.deletedPageName).toBe('Landing Page');
   });
-  
-  it('DELETE /api/pages/:id fails to delete a page', async () => {
-    const res = await request(app).delete('/api/pages/not-valid-id');
+
+  it('DELETE /api/pages/:id fails with invalid ID', async () => {
+    const res = await request(app)
+      .delete('/api/pages/not-valid-id')
+      .set('Authorization', `Bearer ${token}`);
+
     expect(res.statusCode).toBe(500);
     expect(res.body.message).toBe('Error deleting page');
   });
-
 });

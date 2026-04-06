@@ -33,7 +33,8 @@ describe('Action Logging API', () => {
       email: 'action@example.com',
       profile_type: 'Registered',
       password_hash: 'hash', 
-      password_salt: 'salt' 
+      password_salt: 'salt',
+      is_verified: true 
     });
     userId = user.id;
     token = generateToken(user);
@@ -86,25 +87,26 @@ describe('Action Logging API', () => {
       .put(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ version: 2 });
-
     expect(res.statusCode).toBe(200);
 
     const actionLog = await Action.findOne({ action: 'update_template' });
+    
+    
     expect(actionLog).not.toBeNull();
-    expect(actionLog.payload.updatedTemplateId.toString()).toBe(templateId.toString());
+    expect(actionLog.payload).toHaveProperty('updatedFields');
     expect(actionLog.payload.updatedFields.version).toBe(2);
   });
 
-  it('logs an action when a template is deleted', async () => {
+  it('does not log an action when deleting the last template is forbidden', async () => {
     const res = await request(app)
       .delete(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${token}`);
-    expect(res.statusCode).toBe(200);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('You must keep at least one template.');
 
     const actionLog = await Action.findOne({ action: 'delete_template' });
-    expect(actionLog).not.toBeNull();
-    expect(actionLog.payload.deletedTemplateId.toString()).toBe(templateId.toString());
-    expect(actionLog.payload.deletedTemplateName).toBe('Action Template');
+    expect(actionLog).toBeNull();
   });
 
   it('GET /api/actions returns all actions', async () => {

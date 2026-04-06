@@ -35,7 +35,8 @@ describe('Function CRUD API, nested in Page schema', () => {
       email: 'test@example.com',
       profile_type: 'Registered',
       password_hash: 'password123',
-      password_salt: 'salt'
+      password_salt: 'salt',
+      is_verified: true 
     });
 
     userId = user.id;

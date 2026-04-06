@@ -23,7 +23,7 @@ const User = sequelize.define(
       defaultValue: DataTypes.NOW,
     },
     profile_type: {
-      type: DataTypes.ENUM('Admin', 'Registered', 'Guest'),
+      type: DataTypes.ENUM('Admin', 'Registered', 'Guest', 'Banned'),
       defaultValue: 'Guest',
     },
     password_hash: {
@@ -65,7 +65,7 @@ const User = sequelize.define(
     reset_password_expiry: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+    }
   },
   {
     tableName: 'users',

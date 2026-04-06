@@ -1,12 +1,28 @@
 const { verifyToken } = require('../utils/jwt');
 const User = require('../models/userModel');
 
+function getCookieValue(cookieHeader, cookieName) {
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(';');
+  for (const part of cookies) {
+    const [rawName, ...rawValue] = part.trim().split('=');
+    if (rawName === cookieName) {
+      return decodeURIComponent(rawValue.join('='));
+    }
+  }
+
+  return null;
+}
+
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
-    const [scheme, token] = authHeader.split(' ');
+    const [scheme, bearerToken] = authHeader.split(' ');
+    const cookieToken = getCookieValue(req.headers.cookie, 'authToken');
+    const token = scheme === 'Bearer' && bearerToken ? bearerToken : cookieToken;
 
-    if (scheme !== 'Bearer' || !token) {
+    if (!token) {
       return res.status(401).json({ message: 'Unauthorized access' });
     }
 
@@ -14,28 +30,26 @@ const protect = async (req, res, next) => {
 
     const sqlUser = await User.findOne({
       where: { id: decoded.id, email: decoded.email },
-      attributes: ['id', 'email', 'profile_type', 'email_verification', 'is_verified'],
+      attributes: ['id', 'email', 'profile_type', 'is_verified'],
     });
 
     if (!sqlUser) {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    const isVerified =
-      typeof sqlUser.email_verification === 'boolean'
-        ? sqlUser.email_verification
-        : Boolean(sqlUser.is_verified);
-
-    if (!isVerified) {
+    if (!sqlUser.is_verified) {
       return res.status(403).json({ message: 'Please verify your email first.' });
+    }
+
+    if (sqlUser.profile_type === 'Banned') {
+      return res.status(403).json({ message: 'Your account has been banned.' });
     }
 
     req.user = {
       id: sqlUser.id,
       email: sqlUser.email,
       profile_type: sqlUser.profile_type,
-      email_verification: isVerified,
-      is_verified: isVerified,
+      is_verified: sqlUser.is_verified,
     };
 
     return next();

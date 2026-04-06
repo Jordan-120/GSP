@@ -13,6 +13,7 @@ const actionRoutes = require('./routes/actionRoutes');
 const loginRoutes = require('./routes/loginRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes'); // ✅ ADDED
+const { requirePageRole } = require('./middleware/pageAccessMiddleware');
 
 // Load environment variables
 if (process.env.NODE_ENV === 'test') {
@@ -62,7 +63,7 @@ app.get('/', (req, res) => {
 });
 
 // HOME PAGE — GET /home
-app.get('/home', (req, res) => {
+app.get('/home', requirePageRole('Registered'), (req, res) => {
   res.sendFile(
     path.join(
       __dirname,
@@ -76,7 +77,7 @@ app.get('/home', (req, res) => {
 });
 
 // ADMIN PAGE — GET /adminView
-app.get('/adminView', (req, res) => {
+app.get('/adminView', requirePageRole('Admin'), (req, res) => {
   res.sendFile(
     path.join(__dirname, '..', 'frontend', 'views', 'admin', 'adminView.html')
   );
