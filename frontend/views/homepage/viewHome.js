@@ -18,10 +18,55 @@ import { setupStylesPanel } from "./navbar/styles/viewStyles.js";
 // Main init
 // ---------------------------------------
 
+function clearAuth() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+  document.cookie = 'authToken=; Max-Age=0; path=/; SameSite=Lax';
+}
+
+async function ensureRegisteredAccess() {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    window.location.href = '/';
+    return false;
+  }
+
+  try {
+    const res = await fetch('/api/me', {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'same-origin',
+    });
+
+    if (!res.ok) throw new Error('Unauthorized');
+
+    const me = await res.json();
+    const role = String(me?.profile_type || '').toLowerCase();
+
+    if (role === 'admin') {
+      window.location.href = '/adminView';
+      return false;
+    }
+
+    if (role !== 'registered') {
+      clearAuth();
+      window.location.href = '/';
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    clearAuth();
+    window.location.href = '/';
+    return false;
+  }
+}
+
 async function initHome() {
   console.log("viewHome.js: initHome() starting");
 
   try {
+    const allowed = await ensureRegisteredAccess();
+    if (!allowed) return;
     // sidebar behaviors
     setupAccordion();
     setupNavSearch();
@@ -44,9 +89,8 @@ async function initHome() {
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", () => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
-        window.location.href = "http://localhost:5000";
+        clearAuth();
+        window.location.href = '/';
       });
     }
 

@@ -1,28 +1,26 @@
 // homepage/navbar/pages/viewPages.js
 
-import { getActiveTemplate } from "../templates/viewTemplates.js";
-import { rehydrateBuilderWidgets } from "../functions/viewFunctions.js";
+import { getActiveTemplate } from '../templates/viewTemplates.js';
+import { rehydrateBuilderWidgets } from '../functions/viewFunctions.js';
 
 const MAX_PAGES = 10;
 let activePageIndex = 0; // 0 = Home
 
 export function setupPagesControls() {
-  const addPageButton = document.getElementById("addPageButton");
-  const renamePageButton = document.getElementById("renamePageButton");
-  const savePageButton = document.getElementById("savePageButton");
-  const deletePageButton = document.getElementById("deletePageButton");
-  const pagesList = document.getElementById("pagesList");
-  const canvas = document.getElementById("builderCanvas");
+  const addPageButton = document.getElementById('addPageButton');
+  const renamePageButton = document.getElementById('renamePageButton');
+  const savePageButton = document.getElementById('savePageButton');
+  const deletePageButton = document.getElementById('deletePageButton');
+  const pagesList = document.getElementById('pagesList');
+  const canvas = document.getElementById('builderCanvas');
 
   if (!pagesList || !canvas) return;
 
-  // Initial render from current active template
   renderPagesList();
   loadActivePageIntoCanvas();
 
-  // --- Add Page ---
   if (addPageButton) {
-    addPageButton.addEventListener("click", () => {
+    addPageButton.addEventListener('click', () => {
       const tpl = getActiveTemplate();
       if (!tpl) return;
 
@@ -38,24 +36,23 @@ export function setupPagesControls() {
     });
   }
 
-  // --- Rename Page ---
   if (renamePageButton) {
-    renamePageButton.addEventListener("click", () => {
+    renamePageButton.addEventListener('click', () => {
       const tpl = getActiveTemplate();
       if (!tpl) return;
 
       const page = tpl.pages[activePageIndex];
       if (!page) {
-        alert("No active page to rename.");
+        alert('No active page to rename.');
         return;
       }
 
-      const newName = prompt("Rename page:", page.name || "Untitled Page");
-      if (newName === null) return; // user cancelled
+      const newName = prompt('Rename page:', page.name || 'Untitled Page');
+      if (newName === null) return;
 
       const trimmed = newName.trim();
       if (!trimmed) {
-        alert("Page name cannot be empty.");
+        alert('Page name cannot be empty.');
         return;
       }
 
@@ -64,9 +61,8 @@ export function setupPagesControls() {
     });
   }
 
-  // --- Save Page ---
   if (savePageButton) {
-    savePageButton.addEventListener("click", () => {
+    savePageButton.addEventListener('click', () => {
       saveCurrentPageContent();
       const tpl = getActiveTemplate();
       if (!tpl) return;
@@ -77,32 +73,27 @@ export function setupPagesControls() {
     });
   }
 
-  // --- Delete Page ---
   if (deletePageButton) {
-    deletePageButton.addEventListener("click", () => {
+    deletePageButton.addEventListener('click', () => {
       const tpl = getActiveTemplate();
       if (!tpl) return;
 
       const page = tpl.pages[activePageIndex];
       if (!page) {
-        alert("No active page to delete.");
+        alert('No active page to delete.');
         return;
       }
 
       if (tpl.pages.length === 1) {
-        alert("You must have at least one page in a template.");
+        alert('You must have at least one page in a template.');
         return;
       }
 
-      const confirmed = confirm(
-        `Are you sure you want to delete page "${page.name}"?`
-      );
+      const confirmed = confirm(`Are you sure you want to delete page "${page.name}"?`);
       if (!confirmed) return;
 
-      // Remove page
       tpl.pages.splice(activePageIndex, 1);
 
-      // Clamp active index
       if (activePageIndex >= tpl.pages.length) {
         activePageIndex = tpl.pages.length - 1;
       }
@@ -113,9 +104,8 @@ export function setupPagesControls() {
     });
   }
 
-  // --- Click page item ---
-  pagesList.addEventListener("click", (e) => {
-    const item = e.target.closest(".page-item");
+  pagesList.addEventListener('click', (e) => {
+    const item = e.target.closest('.page-item');
     if (!item) return;
 
     const index = parseInt(item.dataset.index, 10);
@@ -128,25 +118,29 @@ export function setupPagesControls() {
     loadActivePageIntoCanvas();
   });
 
-  // --- Respond to template changes from templates.js ---
-  document.addEventListener("beforeTemplateChange", () => {
-    // Save the current page of the old template before switching
+  document.addEventListener('beforeTemplateChange', () => {
     saveCurrentPageContent();
   });
 
-  document.addEventListener("templateChanged", () => {
-    // When template changes: reset to first page and reload
+  document.addEventListener('templateChanged', () => {
     activePageIndex = 0;
     renderPagesList();
     loadActivePageIntoCanvas();
   });
 }
 
-// ---------- Page rendering & state ----------
+function getDefaultPageStyle() {
+  return {
+    backgroundColor: '#ffffff',
+    height: '700px',
+    width: '800px',
+    gridEnabled: true,
+  };
+}
 
 function renderPagesList() {
-  const pagesList = document.getElementById("pagesList");
-  const addPageButton = document.getElementById("addPageButton");
+  const pagesList = document.getElementById('pagesList');
+  const addPageButton = document.getElementById('addPageButton');
   const tpl = getActiveTemplate();
   if (!pagesList || !tpl) return;
 
@@ -154,14 +148,14 @@ function renderPagesList() {
     .map(
       (p, index) => `
       <div
-        class="page-item ${index === activePageIndex ? "active" : ""}"
+        class="page-item ${index === activePageIndex ? 'active' : ''}"
         data-index="${index}"
       >
         ${p.name}
       </div>
     `
     )
-    .join("");
+    .join('');
 
   if (addPageButton) {
     addPageButton.disabled = tpl.pages.length >= MAX_PAGES;
@@ -173,52 +167,46 @@ function addPageToActiveTemplate() {
   if (!tpl) return;
 
   const pageNumber = tpl.pages.length + 1;
-  const pageName = pageNumber === 1 ? "Home" : `Page ${pageNumber}`;
+  const pageName = pageNumber === 1 ? 'Home' : `Page ${pageNumber}`;
 
   tpl.pages.push({
     name: pageName,
-    content: "",
-    style: {
-      backgroundColor: "#ffffff",
-      height: "700px",
-      gridEnabled: true,
-    },
+    content: '',
+    style: getDefaultPageStyle(),
   });
 
   activePageIndex = tpl.pages.length - 1;
 }
 
-// Save current builder canvas into active page
 function saveCurrentPageContent() {
   const tpl = getActiveTemplate();
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!tpl || !canvas) return;
 
   const page = tpl.pages[activePageIndex];
   if (!page) return;
 
-  const prevStyle = page.style || {};
+  const prevStyle = page.style || getDefaultPageStyle();
 
   page.content = canvas.innerHTML;
   page.style = {
     ...prevStyle,
-    backgroundColor: canvas.style.backgroundColor || "#ffffff",
-    height: canvas.style.height || "700px",
-    gridEnabled: canvas.classList.contains("grid-on"),
-    width: canvas.style.width || prevStyle.width || "800px",
+    backgroundColor: canvas.style.backgroundColor || prevStyle.backgroundColor,
+    height: canvas.style.height || prevStyle.height,
+    width: canvas.style.width || prevStyle.width,
+    gridEnabled: canvas.classList.contains('grid-on'),
   };
 }
 
-// Load active page into builder canvas
 function loadActivePageIntoCanvas() {
   const tpl = getActiveTemplate();
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!tpl || !canvas) return;
 
   const page = tpl.pages[activePageIndex];
   if (!page) return;
 
-  if (page.content && page.content.trim() !== "") {
+  if (page.content && page.content.trim() !== '') {
     canvas.innerHTML = page.content;
   } else {
     canvas.innerHTML = `
@@ -228,24 +216,25 @@ function loadActivePageIntoCanvas() {
     `;
   }
 
-  // Apply style
-  const style = page.style || {};
-  canvas.style.backgroundColor = style.backgroundColor || "#ffffff";
-  canvas.style.height = style.height || "700px";
-  canvas.style.width = style.width || "800px";
+  const style = { ...getDefaultPageStyle(), ...(page.style || {}) };
+  page.style = style;
+
+  canvas.style.background = style.backgroundColor;
+  canvas.style.backgroundColor = style.backgroundColor;
+  canvas.style.setProperty('--builder-canvas-bg', style.backgroundColor);
+  canvas.style.height = style.height;
+  canvas.style.width = style.width;
 
   if (style.gridEnabled === false) {
-    canvas.classList.remove("grid-on");
+    canvas.classList.remove('grid-on');
   } else {
-    canvas.classList.add("grid-on");
+    canvas.classList.add('grid-on');
   }
 
-  // Re-wire widgets
   rehydrateBuilderWidgets();
 
-  // Tell styles panel & others that the page changed
   document.dispatchEvent(
-    new CustomEvent("pageChanged", {
+    new CustomEvent('pageChanged', {
       detail: {
         pageIndex: activePageIndex,
       },
@@ -253,51 +242,38 @@ function loadActivePageIntoCanvas() {
   );
 }
 
-// ---------- Style helpers for styles.js ----------
-
 export function getCurrentPageStyle() {
   const tpl = getActiveTemplate();
   if (!tpl) return null;
   const page = tpl.pages[activePageIndex];
   if (!page) return null;
-  return (
-    page.style || {
-      backgroundColor: "#ffffff",
-      height: "700px",
-      gridEnabled: true,
-    }
-  );
+  return { ...getDefaultPageStyle(), ...(page.style || {}) };
 }
 
 export function setCurrentPageStyle(partial) {
   const tpl = getActiveTemplate();
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!tpl || !canvas) return;
 
   const page = tpl.pages[activePageIndex];
   if (!page) return;
 
-  const current =
-    page.style || {
-      backgroundColor: "#ffffff",
-      height: "700px",
-      gridEnabled: true,
-    };
-
-  const next = { ...current, ...partial };
+  const next = {
+    ...getDefaultPageStyle(),
+    ...(page.style || {}),
+    ...partial,
+  };
   page.style = next;
 
-  if (partial.backgroundColor !== undefined) {
-    canvas.style.backgroundColor = next.backgroundColor;
-  }
-  if (partial.height !== undefined) {
-    canvas.style.height = next.height;
-  }
-  if (partial.gridEnabled !== undefined) {
-    if (next.gridEnabled) {
-      canvas.classList.add("grid-on");
-    } else {
-      canvas.classList.remove("grid-on");
-    }
+  canvas.style.background = next.backgroundColor;
+  canvas.style.backgroundColor = next.backgroundColor;
+  canvas.style.setProperty('--builder-canvas-bg', next.backgroundColor);
+  canvas.style.height = next.height;
+  canvas.style.width = next.width;
+
+  if (next.gridEnabled) {
+    canvas.classList.add('grid-on');
+  } else {
+    canvas.classList.remove('grid-on');
   }
 }

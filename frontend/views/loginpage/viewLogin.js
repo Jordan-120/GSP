@@ -1,77 +1,107 @@
-// frontend/views/loginpage/viewLogin.js
-
 document.addEventListener("DOMContentLoaded", () => {
-  // --------------------
-  // Helpers
-  // --------------------
   const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
-  // --------------------
-  // Login elements
-  // --------------------
   const loginForm = document.getElementById("loginForm");
   const loginEmail = document.getElementById("loginEmail");
   const loginPassword = document.getElementById("loginPassword");
 
-  // --------------------
-  // Register modal elements (must match IDs in viewLoginShell.html)
-  // --------------------
   const newUserButton = document.getElementById("newUserButton");
+  const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+  const resendVerificationLink = document.getElementById("resendVerificationLink");
 
   const registerBackdrop = document.getElementById("registerBackdrop");
   const registerClose = document.getElementById("registerClose");
   const registerForm = document.getElementById("registerForm");
-
   const registerEmail = document.getElementById("registerEmail");
   const registerPassword = document.getElementById("registerPassword");
-  const registerPasswordConfirm = document.getElementById(
-    "registerPasswordConfirm"
-  );
+  const registerPasswordConfirm = document.getElementById("registerPasswordConfirm");
   const registerFirstName = document.getElementById("registerFirstName");
   const registerLastName = document.getElementById("registerLastName");
 
-  const showRegisterModal = () => {
-    if (!registerBackdrop) return;
-    registerBackdrop.classList.add("show"); // CSS should make .modal-backdrop.show visible
+  const forgotPasswordBackdrop = document.getElementById("forgotPasswordBackdrop");
+  const forgotPasswordClose = document.getElementById("forgotPasswordClose");
+  const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+  const forgotPasswordEmail = document.getElementById("forgotPasswordEmail");
+
+  const resendVerificationBackdrop = document.getElementById("resendVerificationBackdrop");
+  const resendVerificationClose = document.getElementById("resendVerificationClose");
+  const resendVerificationForm = document.getElementById("resendVerificationForm");
+  const resendVerificationEmail = document.getElementById("resendVerificationEmail");
+
+  const showModal = (backdrop) => {
+    if (!backdrop) return;
+    backdrop.classList.add("show");
   };
 
-  const hideRegisterModal = () => {
-    if (!registerBackdrop) return;
-    registerBackdrop.classList.remove("show");
+  const hideModal = (backdrop) => {
+    if (!backdrop) return;
+    backdrop.classList.remove("show");
   };
 
-  // --------------------
-  // Open/close register modal
-  // --------------------
+  const hideAllModals = () => {
+    [registerBackdrop, forgotPasswordBackdrop, resendVerificationBackdrop].forEach(hideModal);
+  };
+
+  const buildEmailMessage = (data, defaultMessage, linkLabel, linkKey) => {
+    let message = data?.message || defaultMessage;
+
+    if (data?.email_error) {
+      message += `\n\nEmail error: ${data.email_error}`;
+    }
+
+    if (data?.email_hint) {
+      message += `\nHint: ${data.email_hint}`;
+    }
+
+    if (data?.[linkKey]) {
+      message += `\n\n${linkLabel}: ${data[linkKey]}`;
+    }
+
+    if (data?.email_warning) {
+      message += `\n\n${data.email_warning}`;
+    }
+
+    return message;
+  };
+
   if (newUserButton) {
     newUserButton.addEventListener("click", (e) => {
       e.preventDefault();
-      showRegisterModal();
+      showModal(registerBackdrop);
     });
   }
 
-  if (registerClose) {
-    registerClose.addEventListener("click", (e) => {
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", (e) => {
       e.preventDefault();
-      hideRegisterModal();
+      if (loginEmail?.value) forgotPasswordEmail.value = loginEmail.value.trim();
+      showModal(forgotPasswordBackdrop);
     });
   }
 
-  // Click outside modal to close
-  if (registerBackdrop) {
-    registerBackdrop.addEventListener("click", (e) => {
-      if (e.target === registerBackdrop) hideRegisterModal();
+  if (resendVerificationLink) {
+    resendVerificationLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (loginEmail?.value) resendVerificationEmail.value = loginEmail.value.trim();
+      showModal(resendVerificationBackdrop);
     });
   }
 
-  // Optional: ESC key closes modal
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") hideRegisterModal();
+  if (registerClose) registerClose.addEventListener("click", () => hideModal(registerBackdrop));
+  if (forgotPasswordClose) forgotPasswordClose.addEventListener("click", () => hideModal(forgotPasswordBackdrop));
+  if (resendVerificationClose) resendVerificationClose.addEventListener("click", () => hideModal(resendVerificationBackdrop));
+
+  [registerBackdrop, forgotPasswordBackdrop, resendVerificationBackdrop].forEach((backdrop) => {
+    if (!backdrop) return;
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) hideModal(backdrop);
+    });
   });
 
-  // --------------------
-  // LOGIN
-  // --------------------
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideAllModals();
+  });
+
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -96,24 +126,19 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ email, password }),
         });
 
-        let data = {};
-        try {
-          data = await res.json();
-        } catch (err) {
-          console.error("Login response was not JSON:", err);
-        }
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          alert(data.message || "Login failed.");
+          let message = data.message || "Login failed.";
+          if (data.hint) message += `\n\n${data.hint}`;
+          alert(message);
           return;
         }
 
-        // Store token
         if (data.token) {
           localStorage.setItem("authToken", data.token);
         }
 
-        // Determine role (supports multiple backend shapes)
         const role =
           data?.user?.role ||
           data?.user?.profile_type ||
@@ -122,7 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
           data?.user?.profileType ||
           null;
 
-        // ✅ FORCE correct routes (do not trust backend redirectTo for users)
         if (role && String(role).toLowerCase() === "admin") {
           window.location.href = "/adminView";
         } else {
@@ -135,9 +159,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --------------------
-  // REGISTER
-  // --------------------
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -148,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const first_name = (registerFirstName?.value || "").trim();
       const last_name = (registerLastName?.value || "").trim();
 
-      if (!email || !password || !confirm) {
+      if (!email || !password || !confirm || !first_name || !last_name) {
         alert("Please fill out all required fields.");
         return;
       }
@@ -158,36 +179,112 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      if (password.length < 8) {
+        alert("Password must be at least 8 characters long.");
+        return;
+      }
+
       if (password !== confirm) {
         alert("Passwords do not match.");
         return;
       }
 
       try {
-        // Common register endpoint (adjust ONLY if your backend uses a different route)
         const res = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ first_name, last_name, email, password }),
         });
 
-        let data = {};
-        try {
-          data = await res.json();
-        } catch (err) {
-          console.error("Register response was not JSON:", err);
-        }
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
           alert(data.message || "Registration failed.");
           return;
         }
 
-        alert(data.message || "Account created! You can now log in.");
+        alert(
+          buildEmailMessage(
+            data,
+            "Account created! Please verify your email before logging in.",
+            "Verification link",
+            "verification_url"
+          )
+        );
         registerForm.reset();
-        hideRegisterModal();
+        hideModal(registerBackdrop);
       } catch (err) {
         console.error("Register request failed:", err);
+        alert("Something went wrong. Please try again.");
+      }
+    });
+  }
+
+  if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = (forgotPasswordEmail?.value || "").trim();
+      if (!email || !isValidEmail(email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        alert(
+          buildEmailMessage(
+            data,
+            "If this email is registered, a password reset link has been sent.",
+            "Reset link",
+            "reset_url"
+          )
+        );
+        forgotPasswordForm.reset();
+        hideModal(forgotPasswordBackdrop);
+      } catch (err) {
+        console.error("Forgot password request failed:", err);
+        alert("Something went wrong. Please try again.");
+      }
+    });
+  }
+
+  if (resendVerificationForm) {
+    resendVerificationForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = (resendVerificationEmail?.value || "").trim();
+      if (!email || !isValidEmail(email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/resend-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        alert(
+          buildEmailMessage(
+            data,
+            "If the account exists and still needs verification, a new verification email has been sent.",
+            "Verification link",
+            "verification_url"
+          )
+        );
+        resendVerificationForm.reset();
+        hideModal(resendVerificationBackdrop);
+      } catch (err) {
+        console.error("Resend verification request failed:", err);
         alert("Something went wrong. Please try again.");
       }
     });

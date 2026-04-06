@@ -1,35 +1,49 @@
-const dropdownBtn = document.getElementById("dropdownBtn");
-const dropdownMenu = document.getElementById("dropdownMenu");
-const searchInput = document.getElementById("searchInput");
+const dropdownBtn = document.getElementById('dropdownBtn');
+const dropdownMenu = document.getElementById('dropdownMenu');
+const searchInput = document.getElementById('searchInput');
 
-const sheetBody = document.getElementById("sheetBody");
-const tabs = document.getElementById("tabs");
-const pageFrame = document.getElementById("pageFrame");
-const emptyViewer = document.getElementById("emptyViewer");
+const sheetBody = document.getElementById('sheetBody');
+const tabs = document.getElementById('tabs');
+const pageFrame = document.getElementById('pageFrame');
+const emptyViewer = document.getElementById('emptyViewer');
 
-const viewBtn = document.getElementById("viewBtn");
-const approveBtn = document.getElementById("approveBtn");
-const rejectBtn = document.getElementById("rejectBtn");
+const viewBtn = document.getElementById('viewBtn');
+const controlsBtn = document.getElementById('controlsBtn');
+const approveBtn = document.getElementById('approveBtn');
+const rejectBtn = document.getElementById('rejectBtn');
 
-const logoutBtn = document.getElementById("logoutBtn");
+const logoutBtn = document.getElementById('logoutBtn');
 
-// Reject modal elements
-const rejectModal = document.getElementById("rejectModal");
-const rejectCloseBtn = document.getElementById("rejectCloseBtn");
-const rejectCancelBtn = document.getElementById("rejectCancelBtn");
-const rejectConfirmBtn = document.getElementById("rejectConfirmBtn");
-const rejectReasonSelect = document.getElementById("rejectReasonSelect");
+const rejectModal = document.getElementById('rejectModal');
+const rejectCloseBtn = document.getElementById('rejectCloseBtn');
+const rejectCancelBtn = document.getElementById('rejectCancelBtn');
+const rejectConfirmBtn = document.getElementById('rejectConfirmBtn');
+const rejectReasonSelect = document.getElementById('rejectReasonSelect');
 
-let currentFilter = "all_users";
+const userControlsModal = document.getElementById('userControlsModal');
+const userControlsCloseBtn = document.getElementById('userControlsCloseBtn');
+const userControlsCancelBtn = document.getElementById('userControlsCancelBtn');
+const selectedUserName = document.getElementById('selectedUserName');
+const selectedUserStatus = document.getElementById('selectedUserStatus');
+const userControlsHint = document.getElementById('userControlsHint');
+const banUserBtn = document.getElementById('banUserBtn');
+const unbanUserBtn = document.getElementById('unbanUserBtn');
+
+let currentFilter = 'all_users';
 let rows = [];
 let selectedRow = null;
 let loadedPages = [];
 let activePageIndex = 0;
+let denialReasons = [];
 
-let denialReasons = []; // [{code,text}]
+function clearAuth() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+  document.cookie = 'authToken=; Max-Age=0; path=/; SameSite=Lax';
+}
 
 function getToken() {
-  return localStorage.getItem("authToken");
+  return localStorage.getItem('authToken');
 }
 
 function authHeaders() {
@@ -37,27 +51,58 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function apiGet(url) {
-  const res = await fetch(url, { headers: authHeaders() });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Request failed: ${res.status}`);
+async function ensureAdminAccess() {
+  try {
+    const me = await apiGet('/api/me');
+    if (String(me?.profile_type || '').toLowerCase() !== 'admin') {
+      window.location.href = '/home';
+      return false;
+    }
+    return true;
+  } catch (error) {
+    clearAuth();
+    window.location.href = '/';
+    return false;
   }
+}
+
+async function apiGet(url) {
+  const res = await fetch(url, {
+    headers: authHeaders(),
+    credentials: 'same-origin',
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('Unauthorized');
+  }
+
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`;
+    try {
+      const data = await res.json();
+      message = data?.message || message;
+    } catch (error) {
+      message = await res.text();
+    }
+    throw new Error(message || `Request failed: ${res.status}`);
+  }
+
   return res.json();
 }
 
 async function apiPatch(url, bodyObj = {}) {
   const res = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    credentials: 'same-origin',
     body: JSON.stringify(bodyObj),
   });
 
   let data = null;
   try {
     data = await res.json();
-  } catch (e) {
-    // ignore
+  } catch (error) {
+    data = null;
   }
 
   if (!res.ok) {
@@ -68,132 +113,28 @@ async function apiPatch(url, bodyObj = {}) {
   return data;
 }
 
-/* Logout */
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("authToken");
-    window.location.href = "/";
-  });
-}
-
-/* Dropdown */
-dropdownBtn.addEventListener("click", () => {
-  dropdownMenu.style.display =
-    dropdownMenu.style.display === "block" ? "none" : "block";
-});
-
-document.addEventListener("click", (e) => {
-  if (!dropdownMenu.contains(e.target) && !dropdownBtn.contains(e.target)) {
-    dropdownMenu.style.display = "none";
-  }
-});
-
-dropdownMenu.querySelectorAll("div").forEach((item) => {
-  item.addEventListener("click", async () => {
-    dropdownMenu.querySelectorAll("div").forEach((d) =>
-      d.classList.remove("active")
-    );
-    item.classList.add("active");
-
-    currentFilter = item.dataset.filter;
-    dropdownMenu.style.display = "none";
-
-    selectedRow = null;
-    loadedPages = [];
-    setViewerEmpty();
-
-    await loadLeftTable();
-  });
-});
-
-/* Search */
-searchInput.addEventListener("input", () => renderLeftTable());
-
-/* Left Table */
-async function loadLeftTable() {
-  rows = await apiGet(
-    `/api/admin/queue?filter=${encodeURIComponent(currentFilter)}`
-  );
-  renderLeftTable();
-}
-
-function renderLeftTable() {
-  sheetBody.innerHTML = "";
-
-  const q = searchInput.value.trim().toLowerCase();
-
-  const filtered = rows.filter((r) => {
-    if (!q) return true;
-    const name = (r.name || "").toLowerCase();
-    const tmpl = (r.template_name || "").toLowerCase();
-    const status = (r.status || "").toLowerCase();
-    return (
-      name.includes(q) ||
-      tmpl.includes(q) ||
-      status.includes(q) ||
-      String(r.id).includes(q)
-    );
-  });
-
-  const MIN_ROWS = 14;
-  const totalRows = Math.max(MIN_ROWS, filtered.length);
-
-  for (let i = 0; i < totalRows; i++) {
-    const r = filtered[i];
-    const tr = document.createElement("tr");
-
-    if (
-      r &&
-      selectedRow &&
-      r.template_mongo_id &&
-      r.template_mongo_id === selectedRow.template_mongo_id
-    ) {
-      tr.classList.add("selected");
-    }
-
-    if (r) {
-      tr.innerHTML = `
-        <td>${r.id ?? ""}</td>
-        <td>${r.name ?? ""}</td>
-        <td>${r.template_name ?? ""}</td>
-        <td>${r.status ?? ""}</td>
-      `;
-
-      tr.addEventListener("click", () => {
-        selectedRow = r;
-        renderLeftTable();
-      });
-    } else {
-      tr.innerHTML = `<td></td><td></td><td></td><td></td>`;
-    }
-
-    sheetBody.appendChild(tr);
-  }
-}
-
-/* Right Viewer */
 function setViewerEmpty() {
-  pageFrame.style.display = "none";
-  emptyViewer.style.display = "flex";
-  emptyViewer.innerHTML = `Select a row on the left and click <b>View</b>.`;
+  pageFrame.style.display = 'none';
+  emptyViewer.style.display = 'flex';
+  emptyViewer.innerHTML = 'Select a row on the left and click <b>View</b>.';
   renderTabs([]);
 }
 
 function renderTabs(pages) {
-  tabs.innerHTML = "";
+  tabs.innerHTML = '';
 
   const maxTabs = 10;
-  const pageCount = pages.length;
+  for (let i = 0; i < maxTabs; i += 1) {
+    const hasPage = i < pages.length;
+    const btn = document.createElement('button');
+    btn.className = `tab${hasPage ? '' : ' disabled'}`;
+    btn.textContent = hasPage ? `${i + 1}` : 'N/A';
 
-  for (let i = 0; i < maxTabs; i++) {
-    const hasPage = i < pageCount;
-    const btn = document.createElement("button");
-    btn.className = "tab" + (hasPage ? "" : " disabled");
-    btn.textContent = hasPage ? `${i + 1}` : "N/A";
+    if (hasPage && i === activePageIndex) {
+      btn.classList.add('active');
+    }
 
-    if (hasPage && i === activePageIndex) btn.classList.add("active");
-
-    btn.addEventListener("click", () => {
+    btn.addEventListener('click', () => {
       if (!hasPage) return;
       activePageIndex = i;
       renderTabs(loadedPages);
@@ -205,15 +146,15 @@ function renderTabs(pages) {
 }
 
 function showPage(index) {
-  const p = loadedPages[index];
-  if (!p) return;
+  const page = loadedPages[index];
+  if (!page) return;
 
   const html =
-    p.html ||
+    page.html ||
     `<html><body><pre>No HTML found for page ${index + 1}</pre></body></html>`;
 
-  emptyViewer.style.display = "none";
-  pageFrame.style.display = "block";
+  emptyViewer.style.display = 'none';
+  pageFrame.style.display = 'block';
 
   const doc = pageFrame.contentWindow.document;
   doc.open();
@@ -221,47 +162,86 @@ function showPage(index) {
   doc.close();
 }
 
-/* View button */
-viewBtn.addEventListener("click", async () => {
-  if (!selectedRow) return alert("Select a row on the left first.");
-  if (!selectedRow.template_mongo_id)
-    return alert("This row does not have a template to view.");
+async function loadLeftTable() {
+  rows = await apiGet(`/api/admin/queue?filter=${encodeURIComponent(currentFilter)}`);
+  renderLeftTable();
+}
 
-  try {
-    activePageIndex = 0;
-    const data = await apiGet(
-      `/api/templates/${selectedRow.template_mongo_id}/pages`
+function renderLeftTable() {
+  sheetBody.innerHTML = '';
+  const q = searchInput.value.trim().toLowerCase();
+
+  const filtered = rows.filter((row) => {
+    if (!q) return true;
+    const name = (row.name || '').toLowerCase();
+    const templateName = (row.template_name || '').toLowerCase();
+    const status = (row.status || '').toLowerCase();
+
+    return (
+      name.includes(q) ||
+      templateName.includes(q) ||
+      status.includes(q) ||
+      String(row.id).includes(q)
     );
-    loadedPages = Array.isArray(data.pages) ? data.pages : [];
+  });
 
-    renderTabs(loadedPages);
+  const MIN_ROWS = 14;
+  const totalRows = Math.max(MIN_ROWS, filtered.length);
 
-    if (loadedPages.length === 0) {
-      pageFrame.style.display = "none";
-      emptyViewer.style.display = "flex";
-      emptyViewer.textContent = "No pages found for this template.";
-      return;
+  for (let i = 0; i < totalRows; i += 1) {
+    const row = filtered[i];
+    const tr = document.createElement('tr');
+
+    if (row && selectedRow && row.id === selectedRow.id && row.template_mongo_id === selectedRow.template_mongo_id) {
+      tr.classList.add('selected');
     }
 
-    showPage(0);
-  } catch (err) {
-    console.error(err);
-    alert("Could not load template pages.");
-  }
-});
+    if (row) {
+      tr.innerHTML = `
+        <td>${row.id ?? ''}</td>
+        <td>${row.name ?? ''}</td>
+        <td>${row.template_name ?? ''}</td>
+        <td>${row.status ?? ''}</td>
+      `;
 
-/* ---------------- Approve / Reject ---------------- */
+      tr.addEventListener('click', () => {
+        selectedRow = row;
+        renderLeftTable();
+      });
+    } else {
+      tr.innerHTML = '<td></td><td></td><td></td><td></td>';
+    }
+
+    sheetBody.appendChild(tr);
+  }
+}
 
 function selectedTemplateIdOrAlert() {
   if (!selectedRow) {
-    alert("Select a template row first.");
+    alert('Select a template row first.');
     return null;
   }
+
   if (!selectedRow.template_mongo_id) {
-    alert("Select a template row that has a template.");
+    alert('Select a template row that has a template.');
     return null;
   }
+
   return selectedRow.template_mongo_id;
+}
+
+function selectedUserIdOrAlert() {
+  if (!selectedRow) {
+    alert('Select a user row first.');
+    return null;
+  }
+
+  if (!selectedRow.id) {
+    alert('This row does not contain a valid user.');
+    return null;
+  }
+
+  return selectedRow.id;
 }
 
 async function refreshAfterReview() {
@@ -272,59 +252,198 @@ async function refreshAfterReview() {
   await loadLeftTable();
 }
 
-approveBtn.addEventListener("click", async () => {
+function openRejectModal() {
+  rejectModal.classList.add('show');
+  rejectModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeRejectModal() {
+  rejectModal.classList.remove('show');
+  rejectModal.setAttribute('aria-hidden', 'true');
+}
+
+function populateDenialReasons() {
+  rejectReasonSelect.innerHTML = '';
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select a reason…';
+  rejectReasonSelect.appendChild(placeholder);
+
+  denialReasons.forEach((reason) => {
+    const opt = document.createElement('option');
+    opt.value = reason.code;
+    opt.textContent = reason.text;
+    rejectReasonSelect.appendChild(opt);
+  });
+}
+
+function openUserControlsModal() {
+  if (!selectedRow) {
+    alert('Select a user row on the left first.');
+    return;
+  }
+
+  const currentStatus = String(selectedRow.status || '').toLowerCase();
+  const isBanned = currentStatus === 'banned';
+  const isAdmin = currentStatus === 'admin';
+
+  selectedUserName.textContent = selectedRow.name || `User ${selectedRow.id}`;
+  selectedUserStatus.textContent = `Status: ${selectedRow.status || 'Unknown'}`;
+
+  if (isAdmin) {
+    userControlsHint.textContent = 'Admin accounts cannot be banned or unbanned from this popup.';
+  } else if (isBanned) {
+    userControlsHint.textContent = 'This account is currently banned. You can unban it below.';
+  } else {
+    userControlsHint.textContent = 'This account is active. You can ban it below.';
+  }
+
+  banUserBtn.disabled = isBanned || isAdmin;
+  unbanUserBtn.disabled = !isBanned || isAdmin;
+
+  userControlsModal.classList.add('show');
+  userControlsModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeUserControlsModal() {
+  userControlsModal.classList.remove('show');
+  userControlsModal.setAttribute('aria-hidden', 'true');
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    clearAuth();
+    window.location.href = '/';
+  });
+}
+
+dropdownBtn.addEventListener('click', () => {
+  dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+});
+
+document.addEventListener('click', (e) => {
+  if (!dropdownMenu.contains(e.target) && !dropdownBtn.contains(e.target)) {
+    dropdownMenu.style.display = 'none';
+  }
+});
+
+dropdownMenu.querySelectorAll('div').forEach((item) => {
+  item.addEventListener('click', async () => {
+    dropdownMenu.querySelectorAll('div').forEach((entry) => entry.classList.remove('active'));
+    item.classList.add('active');
+
+    currentFilter = item.dataset.filter;
+    dropdownMenu.style.display = 'none';
+
+    selectedRow = null;
+    loadedPages = [];
+    setViewerEmpty();
+
+    await loadLeftTable();
+  });
+});
+
+searchInput.addEventListener('input', () => renderLeftTable());
+
+viewBtn.addEventListener('click', async () => {
+  if (!selectedRow) {
+    alert('Select a row on the left first.');
+    return;
+  }
+
+  if (!selectedRow.template_mongo_id) {
+    alert('This row does not have a template to view.');
+    return;
+  }
+
+  try {
+    activePageIndex = 0;
+    const data = await apiGet(`/api/templates/${selectedRow.template_mongo_id}/pages`);
+    loadedPages = Array.isArray(data.pages) ? data.pages : [];
+    renderTabs(loadedPages);
+
+    if (!loadedPages.length) {
+      pageFrame.style.display = 'none';
+      emptyViewer.style.display = 'flex';
+      emptyViewer.textContent = 'No pages found for this template.';
+      return;
+    }
+
+    showPage(0);
+  } catch (error) {
+    console.error(error);
+    alert('Could not load template pages.');
+  }
+});
+
+controlsBtn.addEventListener('click', () => {
+  openUserControlsModal();
+});
+
+banUserBtn.addEventListener('click', async () => {
+  const userId = selectedUserIdOrAlert();
+  if (!userId) return;
+
+  const ok = confirm(`Ban ${selectedRow.name || `user ${userId}`}?`);
+  if (!ok) return;
+
+  try {
+    await apiPatch(`/api/admin/users/${userId}/ban`);
+    closeUserControlsModal();
+    alert('User banned successfully.');
+    await refreshAfterReview();
+  } catch (error) {
+    console.error(error);
+    alert(`Ban failed: ${error.message}`);
+  }
+});
+
+unbanUserBtn.addEventListener('click', async () => {
+  const userId = selectedUserIdOrAlert();
+  if (!userId) return;
+
+  const ok = confirm(`Unban ${selectedRow.name || `user ${userId}`}?`);
+  if (!ok) return;
+
+  try {
+    await apiPatch(`/api/admin/users/${userId}/unban`);
+    closeUserControlsModal();
+    alert('User unbanned successfully.');
+    await refreshAfterReview();
+  } catch (error) {
+    console.error(error);
+    alert(`Unban failed: ${error.message}`);
+  }
+});
+
+approveBtn.addEventListener('click', async () => {
   const templateId = selectedTemplateIdOrAlert();
   if (!templateId) return;
 
-  const ok = confirm("Approve this template and publish it for all users?");
+  const ok = confirm('Approve this template and publish it for all users?');
   if (!ok) return;
 
   try {
     await apiPatch(`/api/admin/templates/${templateId}/approve`, {});
-    alert("Template approved and published.");
+    alert('Template approved and published.');
     await refreshAfterReview();
-  } catch (err) {
-    console.error(err);
-    alert(`Approve failed: ${err.message}`);
+  } catch (error) {
+    console.error(error);
+    alert(`Approve failed: ${error.message}`);
   }
 });
 
-function openRejectModal() {
-  rejectModal.classList.add("show");
-  rejectModal.setAttribute("aria-hidden", "false");
-}
-
-function closeRejectModal() {
-  rejectModal.classList.remove("show");
-  rejectModal.setAttribute("aria-hidden", "true");
-}
-
-function populateDenialReasons() {
-  rejectReasonSelect.innerHTML = "";
-
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Select a reason…";
-  rejectReasonSelect.appendChild(placeholder);
-
-  for (const r of denialReasons) {
-    const opt = document.createElement("option");
-    opt.value = r.code;
-    opt.textContent = r.text;
-    rejectReasonSelect.appendChild(opt);
-  }
-}
-
-rejectBtn.addEventListener("click", async () => {
+rejectBtn.addEventListener('click', async () => {
   const templateId = selectedTemplateIdOrAlert();
   if (!templateId) return;
 
   if (!denialReasons.length) {
     try {
-      denialReasons = await apiGet("/api/admin/denial-reasons");
-    } catch (e) {
-      console.error(e);
-      alert("Could not load denial reasons.");
+      denialReasons = await apiGet('/api/admin/denial-reasons');
+    } catch (error) {
+      console.error(error);
+      alert('Could not load denial reasons.');
       return;
     }
   }
@@ -333,51 +452,56 @@ rejectBtn.addEventListener("click", async () => {
   openRejectModal();
 });
 
-rejectCloseBtn.addEventListener("click", closeRejectModal);
-rejectCancelBtn.addEventListener("click", closeRejectModal);
+rejectCloseBtn.addEventListener('click', closeRejectModal);
+rejectCancelBtn.addEventListener('click', closeRejectModal);
+userControlsCloseBtn.addEventListener('click', closeUserControlsModal);
+userControlsCancelBtn.addEventListener('click', closeUserControlsModal);
 
-// click outside modal closes it
-rejectModal.addEventListener("click", (e) => {
+rejectModal.addEventListener('click', (e) => {
   if (e.target === rejectModal) closeRejectModal();
 });
 
-rejectConfirmBtn.addEventListener("click", async () => {
+userControlsModal.addEventListener('click', (e) => {
+  if (e.target === userControlsModal) closeUserControlsModal();
+});
+
+rejectConfirmBtn.addEventListener('click', async () => {
   const templateId = selectedTemplateIdOrAlert();
   if (!templateId) return;
 
   const reason_code = rejectReasonSelect.value;
   if (!reason_code) {
-    alert("Please select a reason.");
+    alert('Please select a reason.');
     return;
   }
 
   try {
     await apiPatch(`/api/admin/templates/${templateId}/reject`, { reason_code });
     closeRejectModal();
-    alert("Template denied. The user will see the reason and can re-submit.");
+    alert('Template denied. The user will see the reason and can re-submit.');
     await refreshAfterReview();
-  } catch (err) {
-    console.error(err);
-    alert(`Reject failed: ${err.message}`);
+  } catch (error) {
+    console.error(error);
+    alert(`Reject failed: ${error.message}`);
   }
 });
-
-/* ---------------- Init ---------------- */
 
 (async function init() {
   setViewerEmpty();
 
-  // preload denial reasons (non-fatal)
+  const allowed = await ensureAdminAccess();
+  if (!allowed) return;
+
   try {
-    denialReasons = await apiGet("/api/admin/denial-reasons");
-  } catch (e) {
-    // ignore
+    denialReasons = await apiGet('/api/admin/denial-reasons');
+  } catch (error) {
+    denialReasons = [];
   }
 
   try {
     await loadLeftTable();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to load admin data.");
+  } catch (error) {
+    console.error(error);
+    alert('Failed to load admin data.');
   }
 })();

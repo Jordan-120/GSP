@@ -1,44 +1,37 @@
 // homepage/navbar/functions/viewFunctions.js
 // Shared builder behavior + wiring for all function widgets
 
-import { createAccordionWidget, rehydrateAccordionWidget } from "./accordion.js";
-import { createTabsWidget, rehydrateTabsWidget } from "./multi-tabs.js";
-import { createDropdownWidget, rehydrateDropdownWidget } from "./dropdown.js";
-import { createTextboxWidget, rehydrateTextboxWidget } from "./textbox.js";
-import { createCheckboxWidget, rehydrateCheckboxWidget } from "./checkbox.js";
-import {
-  createProgressBarWidget,
-  rehydrateProgressBarWidget,
-} from "./progressBar.js";
-import {
-  createSearchBubbleWidget,
-  rehydrateSearchBubbleWidget,
-} from "./searchBubble.js";
-
-// ---------- Function palette ----------
+import { createAccordionWidget, rehydrateAccordionWidget } from './accordion.js';
+import { createTabsWidget, rehydrateTabsWidget } from './multi-tabs.js';
+import { createDropdownWidget, rehydrateDropdownWidget } from './dropdown.js';
+import { createTextboxWidget, rehydrateTextboxWidget } from './textbox.js';
+import { createCheckboxWidget, rehydrateCheckboxWidget } from './checkbox.js';
+import { createProgressBarWidget, rehydrateProgressBarWidget } from './progressBar.js';
+import { createSearchBubbleWidget, rehydrateSearchBubbleWidget } from './searchBubble.js';
+import { refreshWidgetColorsInCanvas } from '../styles/page/pageFunctionColor.js';
 
 export function setupFunctionPalette() {
-  const items = document.querySelectorAll(".function-item");
+  const items = document.querySelectorAll('.function-item');
 
   items.forEach((item) => {
-    item.addEventListener("dragstart", (e) => {
-      item.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "copy";
+    item.addEventListener('dragstart', (e) => {
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
 
       const payload = {
-        type: item.dataset.type || "",
+        type: item.dataset.type || '',
       };
 
-      const countInput = item.querySelector(".function-count-input");
+      const countInput = item.querySelector('.function-count-input');
       if (countInput) {
         payload.count = parseConfiguredCount(countInput.value, countInput.min, countInput.max);
       }
 
-      e.dataTransfer.setData("text/plain", JSON.stringify(payload));
+      e.dataTransfer.setData('text/plain', JSON.stringify(payload));
     });
 
-    item.addEventListener("dragend", () => {
-      item.classList.remove("dragging");
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
     });
   });
 }
@@ -57,7 +50,7 @@ function parseDropPayload(rawData) {
 
   try {
     const parsed = JSON.parse(rawData);
-    if (parsed && typeof parsed === "object" && parsed.type) {
+    if (parsed && typeof parsed === 'object' && parsed.type) {
       return parsed;
     }
   } catch (_error) {
@@ -67,37 +60,34 @@ function parseDropPayload(rawData) {
   return null;
 }
 
-// ---------- Canvas behavior ----------
-
 export function setupBuilderCanvas() {
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!canvas) return;
 
-  // Clicking the empty canvas should clear any selected widget
-  canvas.addEventListener("mousedown", (e) => {
-    const isCanvasClick =
-      e.target === canvas || e.target.classList.contains("builder-placeholder");
+  canvas.addEventListener('mousedown', (e) => {
+    const isCanvasClick = e.target === canvas || e.target.classList.contains('builder-placeholder');
     if (isCanvasClick) {
       clearWidgetSelection();
+      stopInlineEditing();
     }
   });
 
-  canvas.addEventListener("dragover", (e) => {
-    e.preventDefault(); // allow drop
-    canvas.classList.add("drag-over");
-  });
-
-  canvas.addEventListener("dragleave", (e) => {
-    if (!canvas.contains(e.relatedTarget)) {
-      canvas.classList.remove("drag-over");
-    }
-  });
-
-  canvas.addEventListener("drop", (e) => {
+  canvas.addEventListener('dragover', (e) => {
     e.preventDefault();
-    canvas.classList.remove("drag-over");
+    canvas.classList.add('drag-over');
+  });
 
-    const payload = parseDropPayload(e.dataTransfer.getData("text/plain"));
+  canvas.addEventListener('dragleave', (e) => {
+    if (!canvas.contains(e.relatedTarget)) {
+      canvas.classList.remove('drag-over');
+    }
+  });
+
+  canvas.addEventListener('drop', (e) => {
+    e.preventDefault();
+    canvas.classList.remove('drag-over');
+
+    const payload = parseDropPayload(e.dataTransfer.getData('text/plain'));
     if (!payload?.type) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -108,58 +98,56 @@ export function setupBuilderCanvas() {
   });
 }
 
-// --- Add widgets at a specific position (with boundaries) ---
 export function addFunctionToCanvas(type, x, y, config = {}) {
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!canvas) return;
 
-  const placeholder = canvas.querySelector(".builder-placeholder");
+  const placeholder = canvas.querySelector('.builder-placeholder');
   if (placeholder) placeholder.remove();
 
   let widget;
   const configuredCount = parseConfiguredCount(config.count, 1, 10);
 
   switch (type) {
-    case "accordion":
+    case 'accordion':
       widget = createAccordionWidget(configuredCount);
       break;
-    case "tabs":
+    case 'tabs':
       widget = createTabsWidget(configuredCount);
       break;
-    case "dropdown":
+    case 'dropdown':
       widget = createDropdownWidget(configuredCount);
       break;
-    case "textbox":
+    case 'textbox':
       widget = createTextboxWidget();
       break;
-    case "checkbox":
+    case 'checkbox':
       widget = createCheckboxWidget(configuredCount);
       break;
-    case "progressBar":
+    case 'progressBar':
       widget = createProgressBarWidget();
       break;
-    case "searchBubble":
+    case 'searchBubble':
       widget = createSearchBubbleWidget();
       break;
     default: {
-      widget = document.createElement("div");
-      widget.className = "builder-widget";
+      widget = document.createElement('div');
+      widget.className = 'builder-widget';
       widget.textContent = `Unknown function type: ${type}`;
     }
   }
 
-  // Add to DOM so we can measure it
   canvas.appendChild(widget);
 
-  // Explicit width/height for smooth resize
   widget.style.width = `${widget.offsetWidth}px`;
   widget.style.height = `${widget.offsetHeight}px`;
 
-  // --- Initial position with locked borders ---
   const canvasWidth = canvas.clientWidth;
   const canvasHeight = canvas.clientHeight;
   const widgetWidth = widget.offsetWidth || 150;
   const widgetHeight = widget.offsetHeight || 50;
+
+  refreshWidgetColorsInCanvas(widget);
 
   let left = x - widgetWidth / 2;
   let top = y - widgetHeight / 2;
@@ -170,11 +158,10 @@ export function addFunctionToCanvas(type, x, y, config = {}) {
   widget.style.left = `${left}px`;
   widget.style.top = `${top}px`;
 
-  // Ensure resize handle
-  let resizeHandle = widget.querySelector(".resize-handle");
+  let resizeHandle = widget.querySelector('.resize-handle');
   if (!resizeHandle) {
-    resizeHandle = document.createElement("div");
-    resizeHandle.className = "resize-handle";
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
     widget.appendChild(resizeHandle);
   }
 
@@ -183,7 +170,16 @@ export function addFunctionToCanvas(type, x, y, config = {}) {
   enableInlineEditing(widget);
 }
 
-// ---------- Dragging ----------
+function isFormLikeTarget(target) {
+  return (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'SELECT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.isContentEditable ||
+    target.closest('[contenteditable="true"]') ||
+    target.closest('.inline-editing')
+  );
+}
 
 function makeWidgetDraggable(widget) {
   let startX = 0;
@@ -192,20 +188,14 @@ function makeWidgetDraggable(widget) {
   let origTop = 0;
   let dragging = false;
 
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!canvas) return;
 
-  widget.addEventListener("mousedown", (e) => {
-    if (
-      e.target.tagName === "INPUT" ||
-      e.target.tagName === "SELECT" ||
-      e.target.tagName === "TEXTAREA" ||
-      e.target.isContentEditable
-    ) {
-      return;
-    }
-    if (e.target.classList.contains("resize-handle")) return;
+  widget.addEventListener('mousedown', (e) => {
+    if (isFormLikeTarget(e.target)) return;
+    if (e.target.classList.contains('resize-handle')) return;
 
+    stopInlineEditing();
     selectWidget(widget);
 
     dragging = true;
@@ -218,10 +208,15 @@ function makeWidgetDraggable(widget) {
     origLeft = rect.left - canvasRect.left;
     origTop = rect.top - canvasRect.top;
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
 
     e.preventDefault();
+  });
+
+  widget.addEventListener('click', (e) => {
+    if (isFormLikeTarget(e.target)) return;
+    selectWidget(widget);
   });
 
   function onMouseMove(e) {
@@ -247,15 +242,13 @@ function makeWidgetDraggable(widget) {
 
   function onMouseUp() {
     dragging = false;
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
   }
 }
 
-// ---------- Resizing ----------
-
 function makeWidgetResizable(widget, handle) {
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!canvas || !handle) return;
 
   const cs = window.getComputedStyle(widget);
@@ -270,7 +263,7 @@ function makeWidgetResizable(widget, handle) {
   let startHeight = 0;
   let resizing = false;
 
-  handle.addEventListener("mousedown", (e) => {
+  handle.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     e.preventDefault();
 
@@ -280,8 +273,8 @@ function makeWidgetResizable(widget, handle) {
     startWidth = widget.offsetWidth;
     startHeight = widget.offsetHeight;
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   });
 
   function onMouseMove(e) {
@@ -310,138 +303,138 @@ function makeWidgetResizable(widget, handle) {
 
   function onMouseUp() {
     resizing = false;
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
   }
 }
 
-// ---------- Selection + delete ----------
-
 let selectedWidget = null;
+let activeInlineEditor = null;
 
 function clearWidgetSelection() {
   if (!selectedWidget) return;
 
-  selectedWidget.classList.remove("selected-widget");
+  selectedWidget.classList.remove('selected-widget');
   selectedWidget = null;
 
-  document.dispatchEvent(
-    new CustomEvent("widgetSelected", {
-      detail: { widget: null },
-    })
-  );
+  document.dispatchEvent(new CustomEvent('widgetSelected', { detail: { widget: null } }));
 }
 
 function selectWidget(widget) {
   if (selectedWidget && selectedWidget !== widget) {
-    selectedWidget.classList.remove("selected-widget");
+    selectedWidget.classList.remove('selected-widget');
   }
 
   selectedWidget = widget;
-  widget.classList.add("selected-widget");
+  widget.classList.add('selected-widget');
 
-  document.dispatchEvent(
-    new CustomEvent("widgetSelected", {
-      detail: { widget },
-    })
-  );
+  document.dispatchEvent(new CustomEvent('widgetSelected', { detail: { widget } }));
 }
 
-document.addEventListener("keydown", (e) => {
+document.addEventListener('keydown', (e) => {
   if (!selectedWidget) return;
 
   const isEditing =
     e.target.isContentEditable ||
-    e.target.tagName === "INPUT" ||
-    e.target.tagName === "TEXTAREA" ||
-    e.target.tagName === "SELECT";
+    e.target.tagName === 'INPUT' ||
+    e.target.tagName === 'TEXTAREA' ||
+    e.target.tagName === 'SELECT';
 
   if (isEditing) return;
 
-  if (e.key === "Backspace" || e.key === "Delete") {
+  if (e.key === 'Backspace' || e.key === 'Delete') {
     e.preventDefault();
     selectedWidget.remove();
     selectedWidget = null;
 
-    document.dispatchEvent(
-      new CustomEvent("widgetSelected", {
-        detail: { widget: null },
-      })
-    );
+    document.dispatchEvent(new CustomEvent('widgetSelected', { detail: { widget: null } }));
+  }
+
+  if (e.key === 'Escape') {
+    stopInlineEditing();
   }
 });
 
-// ---------- Inline text editing ----------
+function findEditableElement(startEl, widget) {
+  const editableSelector = 'h1, h2, h3, h4, h5, h6, p, span, label, summary, button, .tab-content, .gs-widget-accordion-title';
+  const candidate = startEl.closest(editableSelector);
+
+  if (!candidate || !widget.contains(candidate)) return null;
+  if (candidate.classList.contains('resize-handle')) return null;
+  if (candidate.closest('.search-bubble')) return null;
+  if (candidate.closest('.dropdown-option-field')?.querySelector('input') === candidate) return null;
+
+  return candidate;
+}
+
+function stopInlineEditing() {
+  if (!activeInlineEditor) return;
+  activeInlineEditor.contentEditable = 'false';
+  activeInlineEditor.classList.remove('inline-editing');
+  activeInlineEditor = null;
+}
 
 function enableInlineEditing(widget) {
-  widget.addEventListener("dblclick", (e) => {
-    if (
-      e.target.tagName === "INPUT" ||
-      e.target.tagName === "SELECT" ||
-      e.target.tagName === "TEXTAREA"
-    ) {
+  widget.addEventListener('dblclick', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
       return;
     }
-    if (e.target.classList.contains("resize-handle")) return;
+    if (e.target.classList.contains('resize-handle')) return;
 
-    const el = e.target;
+    const editableEl = findEditableElement(e.target, widget);
+    if (!editableEl) return;
 
-    const editableTags = [
-      "H1",
-      "H2",
-      "H3",
-      "H4",
-      "H5",
-      "H6",
-      "P",
-      "SPAN",
-      "LABEL",
-      "DIV",
-      "BUTTON",
-      "SUMMARY",
-    ];
-    if (!editableTags.includes(el.tagName)) return;
+    stopInlineEditing();
+    selectWidget(widget);
 
-    el.contentEditable = "true";
-    el.focus();
+    activeInlineEditor = editableEl;
+    editableEl.contentEditable = 'true';
+    editableEl.classList.add('inline-editing');
+    editableEl.focus();
 
     const range = document.createRange();
-    range.selectNodeContents(el);
+    range.selectNodeContents(editableEl);
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
 
-    const finish = () => {
-      el.contentEditable = "false";
-      el.removeEventListener("blur", finish);
-      el.removeEventListener("keydown", onKeyDown);
+    const finish = (evt) => {
+      const related = evt?.relatedTarget;
+      if (related && (related.closest('.styles-controls') || related.closest('.font-style-toggles'))) {
+        return;
+      }
+      stopInlineEditing();
+      editableEl.removeEventListener('blur', finish);
+      editableEl.removeEventListener('keydown', onKeyDown);
     };
 
     const onKeyDown = (evt) => {
-      if (evt.key === "Enter") {
+      if (evt.key === 'Enter') {
         evt.preventDefault();
-        finish();
+        stopInlineEditing();
+        editableEl.removeEventListener('blur', finish);
+        editableEl.removeEventListener('keydown', onKeyDown);
       }
     };
 
-    el.addEventListener("blur", finish);
-    el.addEventListener("keydown", onKeyDown);
+    editableEl.addEventListener('blur', finish);
+    editableEl.addEventListener('keydown', onKeyDown);
   });
 }
 
-// ---------- Rehydrate widgets already in the canvas ----------
-
 export function rehydrateBuilderWidgets() {
-  const canvas = document.getElementById("builderCanvas");
+  const canvas = document.getElementById('builderCanvas');
   if (!canvas) return;
 
-  const widgets = canvas.querySelectorAll(".builder-widget");
+  stopInlineEditing();
+  clearWidgetSelection();
+
+  const widgets = canvas.querySelectorAll('.builder-widget');
   widgets.forEach((widget) => {
-    // Ensure resize handle
-    let handle = widget.querySelector(".resize-handle");
+    let handle = widget.querySelector('.resize-handle');
     if (!handle) {
-      handle = document.createElement("div");
-      handle.className = "resize-handle";
+      handle = document.createElement('div');
+      handle.className = 'resize-handle';
       widget.appendChild(handle);
     }
 
@@ -449,27 +442,27 @@ export function rehydrateBuilderWidgets() {
     makeWidgetResizable(widget, handle);
     enableInlineEditing(widget);
 
-    // Widget-specific rehydration
-    if (widget.querySelector(".tab-btn")) {
+    if (widget.querySelector('.tab-btn')) {
       rehydrateTabsWidget(widget);
     }
-    if (widget.querySelector(".dropdown-select")) {
+    if (widget.querySelector('.dropdown-select')) {
       rehydrateDropdownWidget(widget);
     }
-    if (widget.querySelector("details")) {
+    if (widget.querySelector('details')) {
       rehydrateAccordionWidget(widget);
     }
     if (widget.querySelector("input[type='checkbox']")) {
       rehydrateCheckboxWidget(widget);
     }
-    if (widget.querySelector(".progress-bar-container")) {
+    if (widget.querySelector('.progress-bar-container')) {
       rehydrateProgressBarWidget(widget);
     }
-    if (widget.querySelector(".search-bubble-input")) {
+    if (widget.querySelector('.search-bubble-input')) {
       rehydrateSearchBubbleWidget(widget);
     }
 
-    // textbox currently needs no special rehydrate, but keep call in case
     rehydrateTextboxWidget(widget);
   });
+
+  refreshWidgetColorsInCanvas(canvas);
 }

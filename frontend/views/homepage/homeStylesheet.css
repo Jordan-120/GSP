@@ -158,6 +158,7 @@ h2 {
   margin: 0;
   box-sizing: border-box;
   display: flex;
+  overflow: hidden;
 }
 
 /* Box container inside sidebar */
@@ -173,6 +174,7 @@ h2 {
   flex-direction: column;
   gap: 12px;
   height: 100%;
+  min-height: 0;
 }
 
 /*//////////////*/
@@ -195,6 +197,8 @@ h2 {
   flex-direction: column;
   gap: 10px;
   flex-grow: 1; /* Pushes it to fill the vertical space */
+  min-height: 0;
+  overflow: hidden;
 }
 
 /*//////////////*/
@@ -228,6 +232,8 @@ h2 {
 
 .acc-item.open .acc-panel {
   max-height: 350px; /* Enough space for items */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .acc-panel a {
@@ -239,6 +245,19 @@ h2 {
 
 .acc-panel a:hover {
   background: #dcdcdc;
+}
+
+.acc-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.acc-panel::-webkit-scrollbar-thumb {
+  background: #bfc9d4;
+  border-radius: 999px;
+}
+
+.acc-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Accordion thumbnail (4 collapsed sections) */
@@ -759,7 +778,6 @@ h2 {
   padding: 4px 8px;
   margin-top: 4px;
 }
-
 
 /*//////////////*/
 /* Widget Polish */
