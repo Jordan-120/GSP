@@ -1,6 +1,7 @@
 const express = require('express');
 
 const { createUser, getAllUsers, getUserById, updateUser, deleteUser } = require('../controllers/userController');
+const { forgotPassword, resetPassword } = require('../controllers/authController');
 
 const router = express.Router();
 //const User = require('../models/userModel');
@@ -56,6 +57,9 @@ exports.register = async (req, res) => {
 */
 //Post create a new user
 router.post('/', createUser);
+
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 //Get retrieve all user
 router.get('/', getAllUsers);
